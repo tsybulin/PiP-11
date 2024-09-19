@@ -88,12 +88,6 @@ enum
 };
 
 
-void RL11::loadboot() {
-    size_t i ;
-    for (i = 0; i < BOOT_LEN; i++)
-        cpu.unibus.write16(02000 + (i * 2), boot_rom[i]);
-}
-
 u16 RL11::read16(u32 a)
 {
     //printf("Read:%06o\r\n", a);

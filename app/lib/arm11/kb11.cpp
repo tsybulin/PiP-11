@@ -2,7 +2,8 @@
 
 #include <circle/setjmp.h>
 
-#include "bootrom.h"
+#include "bootmon.h"
+
 #include <cons/cons.h>
 
 /*
@@ -22,13 +23,9 @@ extern volatile bool interrupted ;
 void disasm(u32 ia);
 void fp11(int IR);
 
-void KB11::reset(u16 start,int bootdev) {
-    if (bootdev) {
-        unibus.rl11.loadboot() ; // Overlay RK05 boot
-    } else {
-        for (auto i = 0; i < 29; i++) {
-            unibus.write16(02000 + (i * 2), bootrom[i]);
-        }
+void KB11::reset(u16 start) {
+    for (int i = 0; i < BOOTMON_LENGTH; i++) {
+        unibus.write16(BOOTMON_BASE + (i * 2), bootmon[i]);
     }
 
     R[7] = start;
@@ -56,17 +53,21 @@ inline u16 KB11::read16(const u16 va) {
 void KB11::write16(const u16 va, const u16 v) {
     const auto a = mmu.decode<true>(va, currentmode());
     switch (a) {
-    case 0777776:
-        writePSW(v);
-        break;
-    case 0777774:
-        stacklimit = v;
-        break;
-    case 0777570:
-        displayregister = v;
-        break;
-    default:
-        unibus.write16(a, v);
+        case 0777772:
+            pir_str = v ;
+            pir_cnt = v ;
+            break ;
+        case 0777776:
+            writePSW(v);
+            break;
+        case 0777774:
+            stacklimit = v;
+            break;
+        case 0777570:
+            displayregister = v;
+            break;
+        default:
+            unibus.write16(a, v);
     }
 }
 
@@ -410,6 +411,8 @@ void KB11::WAIT() {
 }
 
 void KB11::RESET() {
+    pir_str = 0 ;
+    pir_cnt = 0 ;
     if (currentmode()) {
         // RESET is ignored outside of kernel mode
         return;
@@ -893,3 +896,14 @@ void KB11::ptstate() {
     Console::get()->printf("\r\n    PS:%o\r\n", PSW);
 }
 
+void KB11::pirq() {
+    if (pir_str == 0) {
+        pir_cnt = 0 ;
+        return ;
+    }
+
+    if (--pir_cnt == 0) {
+        pir_cnt = pir_str ;
+        interrupt(0240, 2) ;
+    }
+}

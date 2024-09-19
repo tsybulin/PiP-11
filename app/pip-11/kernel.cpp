@@ -14,20 +14,18 @@ typedef struct configuration {
     CString name;
     CString rk;
     CString rl;
-	CString boot;
 } configuration_t ;
 
 static configuration_t configurations[5] = {
     {
-        "DEFAULT",
+        "RK0: DEFAULT",
         "PIP-11/BOOT.RK05",
-        "PIP-11/WORK.RL02",
-		"RK"
-    }
+        "PIP-11/WORK.RL02"
+   }
 } ;
 
 extern queue_t keyboard_queue ;
-TShutdownMode startup(const char *rkfile, const char *rlfile, int bootdev) ;
+TShutdownMode startup(const char *rkfile, const char *rlfile) ;
 
 static int config_handler(void* user, const char* section, const char* name, const char* value) {
     int c = -1 ;
@@ -63,9 +61,7 @@ static int config_handler(void* user, const char* section, const char* name, con
             configurations[c].rk.Format("%s", value);
         } else if (strcmp(name, "RL") == 0) {
             configurations[c].rl.Format("%s", value);
-        } else if (strcmp(name, "BOOT") == 0) {
-			configurations[c].boot.Format("%s", value) ;
-		}
+        }
 
         return 1;
     } else {
@@ -187,8 +183,6 @@ TShutdownMode CKernel::Run (void) {
 
         CString tmp ;
 		tmp.Format("%d. ", i) ;
-		tmp.Append(configurations[i].boot) ;
-		tmp.Append("0: ") ;
 		tmp.Append(configurations[i].name) ;
 		console.write(tmp, 20, 7 + i, i == 0 ? BRIGHT_WHITE_COLOR : WHITE_COLOR) ;
     }
@@ -260,13 +254,12 @@ TShutdownMode CKernel::Run (void) {
 	
 	const char *rk   = configurations[ci].rk ;
 	const char *rl   = configurations[ci].rl ;
-	const char *boot = configurations[ci].boot ;
 
 	screen.ClearScreen() ;
 	console.showStatus() ;
 	console.showRusLat() ;
 
-	TShutdownMode mode = startup(rk, rl, strncmp(boot, "RL", 2) == 0 ? 1 : 0) ;
+	TShutdownMode mode = startup(rk, rl) ;
 	
 	return mode ;
 }

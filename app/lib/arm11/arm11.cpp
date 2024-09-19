@@ -86,32 +86,7 @@ int sim_load(FIL *bld)
 }
 
 
-u16 binload(const char* fnm)
-{
-    u16 rsl;
-    gprintf("Binload:%s\r\n",fnm);
-	FRESULT fr = f_open(&bload, fnm, FA_READ | FA_WRITE);
-	if (FR_OK != fr && FR_EXIST != fr) {
-		gprintf("f_open(%s) error: (%d)\n", fnm, fr);
-		while (1) ;
-	}
-    rsl = sim_load(&bload);
-    f_close(&bload);
-    return rsl;
-}
-
-void setup(const char *rkfile, const char *rlfile, int bootdev) {
-
-    if (strstr(rkfile,".TAP")) {
-        cpu.reset(0200, 0) ;
-        //cpu.print=true;           // Uncomment to start continuous print of cpu steps
-        if (binload(rkfile))
-            gprintf("Load fail");
-        else
-            gprintf("Loaded tape:%s",rkfile) ;
-        return;
-    }
-
+void setup(const char *rkfile, const char *rlfile) {
 	if (cpu.unibus.rk11.rk05.obj.lockid) {
 		return ;
     }
@@ -131,7 +106,7 @@ void setup(const char *rkfile, const char *rlfile, int bootdev) {
     clkdiv = (uint64_t)1000000 / (uint64_t)60;
     systime = CTimer::GetClockTicks64() ;
 	
-    cpu.reset(02002, bootdev);
+    cpu.reset(0140000);
 }
 
 jmp_buf trapbuf;
@@ -161,6 +136,7 @@ void loop() {
         
         cpu.unibus.rk11.step();
         cpu.unibus.rl11.step();
+        cpu.pirq() ;
         
         if (kbdelay++ == 2000) {
             cpu.unibus.cons.poll();
@@ -176,8 +152,8 @@ void loop() {
     }
 }
 
-TShutdownMode startup(const char *rkfile, const char *rlfile, int bootdev) {
-    setup(rkfile,rlfile,bootdev);
+TShutdownMode startup(const char *rkfile, const char *rlfile) {
+    setup(rkfile,rlfile);
     
     while (!interrupted) {
         loop();

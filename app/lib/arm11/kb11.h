@@ -10,8 +10,8 @@ enum { FLAGN = 8, FLAGZ = 4, FLAGV = 2, FLAGC = 1 };
 class KB11 {
   public:
     void step();
-    void reset(u16 start, int bootdev);
-
+    void reset(u16 start);
+    void pirq() ;
     void trapat(u16 vec);
 
     // interrupt schedules an interrupt.
@@ -57,6 +57,8 @@ class KB11 {
     u16 stacklimit, switchregister, displayregister;
     u16 stackpointer[4]; // Alternate R6 (kernel, super, illegal, user)
 
+    u16 pir_str = 0 ;
+    u16 pir_cnt = 0 ;
 
     inline bool N() { return PSW & FLAGN; }
     inline bool Z() { return PSW & FLAGZ; }

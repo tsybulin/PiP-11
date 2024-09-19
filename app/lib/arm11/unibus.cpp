@@ -55,8 +55,10 @@ void UNIBUS::write16(const u32 a, const u16 v) {
     case 0777600:
         cpu.mmu.write16(a, v);
         return;
+    case 0777700:
+        cpu.write16(a, v) ;
     default:
-        //printf("unibus: write to invalid address %06o\n", a);
+        // gprintf("unibus: write to invalid address %06o at %06o", a, cpu.PC);
         trap(INTBUS);
     }
     return;
