@@ -253,7 +253,7 @@ TShutdownMode CKernel::Run (void) {
 						paused = true ;
 
 						console.vtCls() ;
-						console.write("FIRMWARE> ", 0, 0, RED_COLOR) ;
+						console.write("FIRMWARE> ", 0, 0, YELLOW_COLOR) ;
 
 						CScheduler scheduler ;
 
@@ -264,9 +264,11 @@ TShutdownMode CKernel::Run (void) {
 							break;
 						}
 
+						console.write("> SHOW IP", 0, 2, YELLOW_COLOR) ;
+
 						CString ips ;
 						net.GetConfig()->GetIPAddress()->Format(&ips);
-						console.write(ips, 0, 1, RED_COLOR) ;
+						console.write(ips, 0, 4, YELLOW_COLOR) ;
 
 						new Firmware(&net, &fileSystem) ;
 						while (!interrupted) {
