@@ -4,8 +4,10 @@
 #include "kernel.h"
 
 #include <circle/util.h>
+#include <circle/sched/scheduler.h>
 #include "ini.h"
 #include "logo.h"
+#include "firmware.h"
 
 #define DRIVE "SD:"
 extern volatile bool interrupted ;
@@ -137,7 +139,7 @@ boolean CKernel::Initialize (void) {
 TShutdownMode CKernel::Run (void) {
 	console.vtCls() ;
 	CString txt ;
-	txt.Format("PiP-11/45: %dx%d (%dx%d) (%dx%d)", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
+	txt.Format("PiP-11/45: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
 	this->console.write(txt, 0, 6, YELLOW_COLOR) ;
 
 	if (FR_OK != f_mount(&fileSystem, DRIVE, 1)) {
@@ -208,7 +210,7 @@ TShutdownMode CKernel::Run (void) {
 		}
 
 		if (!queue_is_empty(&keyboard_queue)) {
-			char c ;
+			unsigned char c ;
 			if (!queue_try_remove(&keyboard_queue, &c)) {
 				continue ;
 			}
@@ -241,9 +243,37 @@ TShutdownMode CKernel::Run (void) {
 					break;
 
 				case '4':
-					ci = 0 ;
+					ci = 4 ;
 					selected = true ;
 					break;
+
+				case KEY_F11: {
+						ci = 0 ;
+						selected = false ;
+						paused = true ;
+
+						console.vtCls() ;
+						console.write("FIRMWARE> ", 0, 0, RED_COLOR) ;
+
+						CScheduler scheduler ;
+
+						CNetSubSystem net;
+						if (!net.Initialize()) {
+							gprintf("Net initilize error") ;
+							while(!interrupted) {} ;
+							break;
+						}
+
+						CString ips ;
+						net.GetConfig()->GetIPAddress()->Format(&ips);
+						console.write(ips, 0, 1, RED_COLOR) ;
+
+						new Firmware(&net, &fileSystem) ;
+						while (!interrupted) {
+							scheduler.Yield() ;
+						}
+					}
+					break ;
 
 				default:
 					ci = 0 ;
@@ -269,6 +299,8 @@ TShutdownMode CKernel::Run (void) {
 	console.showRusLat() ;
 
 	TShutdownMode mode = startup(rk, rl) ;
+
+	f_unmount(DRIVE) ;
 	
 	return mode ;
 }
