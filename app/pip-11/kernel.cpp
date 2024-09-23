@@ -137,8 +137,8 @@ boolean CKernel::Initialize (void) {
 TShutdownMode CKernel::Run (void) {
 	console.vtCls() ;
 	CString txt ;
-	txt.Format("PiP-11: %dx%d (%dx%d) (%dx%d)", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
-	this->console.write(txt, 0, 24, GREEN_COLOR) ;
+	txt.Format("PiP-11/45: %dx%d (%dx%d) (%dx%d)", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
+	this->console.write(txt, 0, 6, YELLOW_COLOR) ;
 
 	if (FR_OK != f_mount(&fileSystem, DRIVE, 1)) {
 		gprintf("SD Card not inserted or SD Card error!") ;
@@ -168,14 +168,22 @@ TShutdownMode CKernel::Run (void) {
 	bool selected = false ;
 	bool paused = false ;
 
-	console.drawLine(" BOOT ", 5) ;
+	console.write("> SHOW CONFIGURATION", 0, 8, YELLOW_COLOR) ;
+
+	for (int y = 0; y < MODEL_HEIGHT; y++) {
+		for (int x = 0; x < MODEL_WIDTH; x ++) {
+			screen.SetPixel(x, y + 16, model[y * MODEL_WIDTH + x]) ;
+		}
+	}
 
 	for (int y = 0; y < LOGO_HEIGHT; y++) {
 		for (int x = 0; x < LOGO_WIDTH; x ++) {
-			screen.SetPixel(x, y + 16, logo[y * LOGO_WIDTH + x]) ;
+			screen.SetPixel(options.GetWidth() - LOGO_WIDTH + x, y + 16, logo[y * LOGO_WIDTH + x]) ;
 		}
 	}
 	
+	unsigned int row = 10 ;
+
     for (int i = 0; i < 5; i++) {
 		if (configurations[i].name.GetLength() == 0) {
 			continue ;
@@ -184,10 +192,11 @@ TShutdownMode CKernel::Run (void) {
         CString tmp ;
 		tmp.Format("%d. ", i) ;
 		tmp.Append(configurations[i].name) ;
-		console.write(tmp, 20, 7 + i, i == 0 ? BRIGHT_WHITE_COLOR : WHITE_COLOR) ;
+		console.write(tmp, 0, row++, i == 0 ? BRIGHT_YELLOW_COLOR : YELLOW_COLOR) ;
     }
+
     
-	console.drawLine(nullptr, 13) ;
+	console.write("BOOT>", 0, ++row, YELLOW_COLOR) ;
 
 	unsigned int timeout = timer.GetTicks() + 600 ;
 
@@ -245,10 +254,10 @@ TShutdownMode CKernel::Run (void) {
 		}
 
 		if (!paused) {
-			txt.Format("Boot in %d s.", (timeout - timer.GetTicks()) / 100) ;
-			this->console.write(txt, 34, 14, BRIGHT_WHITE_COLOR) ;
+			txt.Format("BOOT %d s.>", (timeout - timer.GetTicks()) / 100) ;
+			this->console.write(txt, 0, row, YELLOW_COLOR) ;
 		} else {
-			this->console.write("AutoBoot paused      ", 34, 14, BRIGHT_WHITE_COLOR) ;
+			this->console.write("BOOT>        ", 0, row, YELLOW_COLOR) ;
 		}
 	}
 	
