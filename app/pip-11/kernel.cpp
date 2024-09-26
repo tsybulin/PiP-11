@@ -28,6 +28,7 @@ static configuration_t configurations[5] = {
 
 extern queue_t keyboard_queue ;
 TShutdownMode startup(const char *rkfile, const char *rlfile) ;
+CSerialDevice *pSerial ;
 
 static int config_handler(void* user, const char* section, const char* name, const char* value) {
     int c = -1 ;
@@ -84,6 +85,7 @@ CKernel::CKernel (void)
 	console(&actLED, &deviceNameService, &interrupt, &timer),
 	multiCore(CMemorySystem::Get(), &console, &cpuThrottle)
 {
+	pSerial = &serial ;
 }
 
 CKernel::~CKernel (void) {
@@ -98,6 +100,7 @@ boolean CKernel::Initialize (void) {
 
 	if (bOK) {
 		bOK = serial.Initialize(115200) ;
+		serial.SetOptions(0) ;
 	}
 
 	if (bOK) {

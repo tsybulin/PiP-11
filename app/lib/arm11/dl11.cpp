@@ -1,12 +1,12 @@
 #include "dl11.h"
 
 #include "kb11.h"
+#include <circle/serial.h>
 
 extern KB11 cpu;
 
-static bool keypressed = false;
-
 extern volatile bool interrupted ;
+extern CSerialDevice *pSerial ;
 
 DL11::DL11() {
 }
@@ -19,13 +19,22 @@ void DL11::clearterminal() {
 	count = 0;
 }
 
+static char dl11_char = '\0' ;
+
 static int _kbhit() {
-	return false ; //uart_is_readable(PIN_UART_ID);
+	char c ;
+	int n = pSerial->Read(&c, 1) ;
+	if (n <= 0) {
+		return false ;
+	}
+
+	dl11_char = c ;
+
+	return true ;
 }
 
 void DL11::serial_putchar(char c) {
-	// while (!uart_is_writable(PIN_UART_ID));
-	// uart_putc(PIN_UART_ID,c);
+	pSerial->Write(&c, 1) ;
 }
 char DL11::serial_getchar() {
 	return '\0' ; // uart_getc(PIN_UART_ID);
@@ -34,21 +43,17 @@ char DL11::serial_getchar() {
 void DL11::poll() {
 	if (!rcvrdone()) {
 		// unit not busy
-		if (true)
-			if (_kbhit() || keypressed) {
-				char ch = serial_getchar();
-				count = 0;
-				if (true) {
-					rbuf = ch & 0x7f;
-					rcsr |= 0x80;
-					if (rcsr & 0x40) {
-						cpu.interrupt(INTDLR, 4);
-					}
-				}
-				else {
-					keypressed = false;
+		if (_kbhit()) {
+			char ch = serial_getchar();
+			count = 0;
+			if (true) {
+				rbuf = ch & 0x7f;
+				rcsr |= 0x80;
+				if (rcsr & 0x40) {
+					cpu.interrupt(INTDLR, 4);
 				}
 			}
+		}
 	}
 
 
