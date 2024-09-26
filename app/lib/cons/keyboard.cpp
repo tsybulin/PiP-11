@@ -150,11 +150,6 @@ void Console::processKeyboardVT(u8 key) {
             sendString("\033Ow") ;
             break;
 
-        case HID_KEY_RETURN:
-        case HID_KEY_KEYPAD_ENTER:
-            sendString("\033OM") ;
-            break;
-
         default:
             sendChar(key) ;
             break;
@@ -223,8 +218,13 @@ void Console::keyStatusHandler(unsigned char modifiers, const unsigned char keys
     lastKey = k ;
     lastTick = now ;
 
-    u8 ascii = keyboard_map_key_ascii(k, modifiers) ;
-    pthis->processKeyboardVT(ascii) ;
+    if (!modifiers && (k == HID_KEY_RETURN || k == HID_KEY_KEYPAD_ENTER)) {
+            pthis->sendString("\033OM") ;
+    } else {
+        u8 ascii = keyboard_map_key_ascii(k, modifiers) ;
+        pthis->processKeyboardVT(ascii) ;
+    }
+
     pthis->actLED->On() ;
     pthis->led_ticks = pthis->timer->GetTicks() + 2 ;
 }
