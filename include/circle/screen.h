@@ -217,7 +217,7 @@ public:
 
 	///
 	void displayChar(char chChar, unsigned col, unsigned row, TScreenColor fg = WHITE_COLOR, TScreenColor bg = BLACK_COLOR) ;
-	void scrollRegion(u8 top_limit, u8 bottom_limit, int offset, TScreenColor bg_color) ;
+	void scrollRegion(int top_limit, int bottom_limit, int offset, TScreenColor bg_color) ;
 	unsigned getCharWidth() ;
 	unsigned getCharHeight() ;
 	void ClearScreen() ;

@@ -956,7 +956,7 @@ void CScreenDevice::Scroll (void)
 	}
 }
 
-void CScreenDevice::scrollRegion(u8 top_limit, u8 bottom_limit, int offset, TScreenColor bg_color) {
+void CScreenDevice::scrollRegion(int top_limit, int bottom_limit, int offset, TScreenColor bg_color) {
     if (offset == 0) {
         return ;
     }

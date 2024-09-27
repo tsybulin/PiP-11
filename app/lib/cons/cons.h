@@ -26,7 +26,7 @@ class Console {
 		void drawLine(const char* title, unsigned row) ;
 		TShutdownMode loop() ;
 		void printf(const char *__restrict format, ...) ;
-		void vtFillRegion(u8 xs, u8 ys, u8 xe, u8 ye, char c, TScreenColor fg, TScreenColor bg) ;
+		void vtFillRegion(int xs, int ys, int xe, int ye, char c, TScreenColor fg, TScreenColor bg) ;
 		void vtCls() ;
 		void putCharVT(char c) ;
 		void showStatus() ;
@@ -66,15 +66,15 @@ class Console {
 
 		void putCharVT100(char c) ;
 		void putCharVT52(char c) ;
-		void vtScrollRegion(u8 top_limit, u8 bottom_limit, int offset, TScreenColor bg_color) ;
+		void vtScrollRegion(int top_limit, int bottom_limit, int offset, TScreenColor bg_color) ;
 		void vtShowCursor(boolean show) ;
-		void vtMoveCursorWrap(u8 row, u8 col) ;
-		void vtMoveCursorWithinRegion(u8 row, u8 col, u8 top_limit, u8 bottom_limit) ;
-		void vtMoveCursorLimited(u8 row, u8 col) ;
-		void vtInitCursor(u8 row, u8 col) ;
+		void vtMoveCursorWrap(int row, int col) ;
+		void vtMoveCursorWithinRegion(int row, int col, int top_limit, int bottom_limit) ;
+		void vtMoveCursorLimited(int row, int col) ;
+		void vtInitCursor(int row, int col) ;
 		void vtPutChar(char c) ;
-		void vtInsert(u8 x, u8 y, u8 n, TScreenColor fg) ;
-		void vtDelete(u8 x, u8 y, u8 n, TScreenColor fg) ;
+		void vtInsert(int x, int y, int n, TScreenColor fg) ;
+		void vtDelete(int x, int y, int n, TScreenColor fg) ;
 		void vtProcessText(char c) ;
 		void vtReset() ;
 		void vtProcessCommand(char start_char, char final_char, u8 num_params, u8 *params) ;

@@ -45,7 +45,7 @@ static const u8 ru_char_mapping[63] = {
 #define MAX(a, b) ((a)>(b)?(a):(b))
 #define MIN(a, b) ((b)>(a)?(a):(b))
 
-void Console::vtScrollRegion(u8 top_limit, u8 bottom_limit, int offset, TScreenColor bg_color) {
+void Console::vtScrollRegion(int top_limit, int bottom_limit, int offset, TScreenColor bg_color) {
     this->screen->scrollRegion(top_limit, bottom_limit, offset, bg_color) ;
 }
 
@@ -62,7 +62,7 @@ void Console::vtShowCursor(boolean show) {
     }
 }
 
-void Console::vtMoveCursorWrap(u8 row, u8 col) {
+void Console::vtMoveCursorWrap(int row, int col) {
     if (row == cursor_row && col == cursor_col) {
         return ;
     }
@@ -99,7 +99,7 @@ void Console::vtMoveCursorWrap(u8 row, u8 col) {
     vtShowCursor(true) ;
 }
 
-void Console::vtMoveCursorWithinRegion(u8 row, u8 col, u8 top_limit, u8 bottom_limit) {
+void Console::vtMoveCursorWithinRegion(int row, int col, int top_limit, int bottom_limit) {
     if (row == cursor_row && col == cursor_col) {
         return ;
     }
@@ -128,13 +128,13 @@ void Console::vtMoveCursorWithinRegion(u8 row, u8 col, u8 top_limit, u8 bottom_l
     vtShowCursor(true) ;
 }
 
-void Console::vtMoveCursorLimited(u8 row, u8 col) {
+void Console::vtMoveCursorLimited(int row, int col) {
     if (cursor_row >= scroll_region_start && cursor_row <= scroll_region_end) {
         vtMoveCursorWithinRegion(row, col, scroll_region_start, scroll_region_end) ;
     }
 }
 
-void Console::vtInitCursor(u8 row, u8 col) {
+void Console::vtInitCursor(int row, int col) {
     cursor_row = -1;
     cursor_col = -1;
     vtMoveCursorWithinRegion(row, col, 0, CONS_LAST_ROW) ;
@@ -184,11 +184,11 @@ void Console::vtPutChar(char c) {
     }
 }
 
-void Console::vtFillRegion(u8 xs, u8 ys, u8 xe, u8 ye, char c, TScreenColor fg, TScreenColor bg) {
+void Console::vtFillRegion(int xs, int ys, int xe, int ye, char c, TScreenColor fg, TScreenColor bg) {
     int from = CONSADDR(ys) + xs ;
     int to = CONSADDR(ye) + xe ;
-    for (u8 y = ys; y <= ye; y++) {
-        for (u8 x = 0; x < TEXTMODE_COLS; x++) {
+    for (int y = ys; y <= ye; y++) {
+        for (int x = 0; x < TEXTMODE_COLS; x++) {
             int a = CONSADDR(y) + x ;
             if (a >= from && a <= to) {
                 screen->displayChar(c, x, y, fg, bg) ;
@@ -197,7 +197,7 @@ void Console::vtFillRegion(u8 xs, u8 ys, u8 xe, u8 ye, char c, TScreenColor fg, 
     }
 }
 
-void Console::vtInsert(u8 x, u8 y, u8 n, TScreenColor fg) {
+void Console::vtInsert(int x, int y, int n, TScreenColor fg) {
     if (x >= TEXTMODE_COLS || y >= CONS_LAST_ROW) {
         return ;
     }
@@ -219,7 +219,7 @@ void Console::vtInsert(u8 x, u8 y, u8 n, TScreenColor fg) {
     }
 }
 
-void Console::vtDelete(u8 x, u8 y, u8 n, TScreenColor fg) {
+void Console::vtDelete(int x, int y, int n, TScreenColor fg) {
     if (x >= TEXTMODE_COLS || y >= CONS_LAST_ROW) {
         return ;
     }
@@ -244,7 +244,7 @@ void Console::vtDelete(u8 x, u8 y, u8 n, TScreenColor fg) {
 void Console::vtProcessText(char c) {
     switch (c) {
         case 5: // ENQ => send answer-back string
-        sendString("murm-pdp-11") ;
+        sendString("pip-11") ;
         break;
       
         case 7: // BEL => produce beep
@@ -657,7 +657,7 @@ void Console::putCharVT100(char c) {
                 case 'K': vtProcessCommand(0, 'K', 0, nullptr); break;  // clear to end of row
                 case 'D': vtMoveCursorWrap(cursor_row+1, cursor_col); break; // cursor down
                 case 'E': vtMoveCursorWrap(cursor_row+1, 0); break;          // cursor down and to first column
-                case 'I': vtMoveCursorWrap(cursor_row-1, 0); break;          // cursor up and to furst column
+                case 'I': vtMoveCursorWrap(cursor_row-1, 0); break;          // cursor up and to first column
                 case 'M': vtMoveCursorWrap(cursor_row-1, cursor_col); break; // cursor up
                 case '(': 
                 case ')': 
