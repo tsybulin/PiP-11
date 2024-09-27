@@ -20,7 +20,6 @@ class KL11 {
     u16 rbuf;
     u16 xcsr;
     u16 xbuf;
-    u16 count;
     int iflag;
 
     inline bool rcvrdone() { return rcsr & 0x80; }

@@ -16,7 +16,6 @@ void DL11::clearterminal() {
 	xcsr = 0x80;
 	rbuf = 0;
 	xbuf = 0;
-	count = 0;
 }
 
 static char dl11_char = '\0' ;
@@ -36,8 +35,9 @@ static int _kbhit() {
 void DL11::serial_putchar(char c) {
 	pSerial->Write(&c, 1) ;
 }
+
 char DL11::serial_getchar() {
-	return '\0' ; // uart_getc(PIN_UART_ID);
+	return dl11_char ;
 }
 
 void DL11::poll() {
@@ -45,7 +45,6 @@ void DL11::poll() {
 		// unit not busy
 		if (_kbhit()) {
 			char ch = serial_getchar();
-			count = 0;
 			if (true) {
 				rbuf = ch & 0x7f;
 				rcsr |= 0x80;

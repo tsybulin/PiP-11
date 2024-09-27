@@ -9,7 +9,6 @@ extern "C" {
 
 extern KB11 cpu;
 
-bool keypressed = false;
 extern volatile bool interrupted ;
 extern queue_t keyboard_queue ;
 extern queue_t console_queue ;
@@ -24,7 +23,6 @@ void KL11::clearterminal()
 	xcsr = 0x80;
 	rbuf = 0;
 	xbuf = 0;
-	count = 0;
 }
 
 static int _kbhit() {
@@ -45,30 +43,19 @@ char KL11::serial_getchar() {
 	return '\0' ;
 }
 
-void KL11::poll()
-{
-	if (!rcvrdone())
-	{
+void KL11::poll() {
+	if (!rcvrdone()) {
 		// unit not busy
-		if (count++)
-			if (_kbhit() || keypressed)
-			{
-				char ch;
-				count = 0;
-				if ((ch = KL11::serial_getchar()))
-				{
-					rbuf = ch & 0x7f;
-					rcsr |= 0x80;
-					if (rcsr & 0x40)
-					{
-						cpu.interrupt(INTTTYIN, 4);
-					}
-				}
-				else
-				{
-					keypressed = false;
+		if (_kbhit()) {
+			char ch;
+			if ((ch = KL11::serial_getchar())) {
+				rbuf = ch & 0x7f;
+				rcsr |= 0x80;
+				if (rcsr & 0x40) {
+					cpu.interrupt(INTTTYIN, 4);
 				}
 			}
+		}
 	}
 
 	if (xbuf)
