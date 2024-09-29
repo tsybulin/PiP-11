@@ -220,6 +220,8 @@ void Console::keyStatusHandler(unsigned char modifiers, const unsigned char keys
 
     if (!modifiers && (k == HID_KEY_RETURN || k == HID_KEY_KEYPAD_ENTER)) {
             pthis->sendString("\033OM") ;
+    } else if (modifiers & KEYBOARD_MODIFIER_RIGHTALT && k == HID_KEY_ENTER) {
+            pthis->sendString("\033OM") ;
     } else {
         u8 ascii = keyboard_map_key_ascii(k, modifiers) ;
         pthis->processKeyboardVT(ascii) ;
