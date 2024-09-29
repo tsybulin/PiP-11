@@ -4,20 +4,22 @@
 
 // interrupts
 enum INTVEC {
-    INTBUS = 0004,
-    INTINVAL = 0010,
-    INTDEBUG = 0014,
-    INTIOT = 0020,
-    INTTTYIN = 0060,
+    INTBUS    = 0004,
+    INTINVAL  = 0010,
+    INTDEBUG  = 0014,
+    INTIOT    = 0020,
+    INTTTYIN  = 0060,
     INTTTYOUT = 0064,
-    INTFAULT = 0250,
-    INTCLOCK = 0100,
-    INTRK = 0220,
-    INTFIS = 0244,
-    INTRL = 0160,
-    INTDLR = 0300,
-    INTDLT = 0304,
-    INTFPP = 0244
+    INTPTR    = 0070,
+    INTPTP    = 0074,
+    INTCLOCK  = 0100,
+    INTRL     = 0160,
+    INTRK     = 0220,
+    INTFIS    = 0244,
+    INTFPP    = 0244,
+    INTFAULT  = 0250,
+    INTDLR    = 0300,
+    INTDLT    = 0304,
 };
 
 void trap(u16 num);

@@ -18,7 +18,7 @@ class UNIBUS {
     KL11 cons;
     RK11 rk11;
     KW11 kw11;
-    PC11 ptr;
+    PC11 ptr_ptp;
     LP11 lp11;
     RL11 rl11;
     DL11 dl11;

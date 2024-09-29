@@ -136,6 +136,7 @@ void loop() {
         
         cpu.unibus.rk11.step();
         cpu.unibus.rl11.step();
+        cpu.unibus.ptr_ptp.step() ;
         cpu.pirq() ;
         
         if (kbdelay++ == 2000) {

@@ -1,11 +1,21 @@
 #pragma once
 
 #include <circle/types.h>
+#include <fatfs/ff.h>
+
+#define PC11_PRS 0777550
+#define PC11_PRB 0777552
+#define PC11_PPS 0777554
+#define PC11_PPB 0777556
 
 class PC11 {
-
     public:
-    u16 prs, prb, pps, ppb;
+        u16 read16(u32 a);
+        void write16(const u32 a, const u16 v) ;
+        void reset() ;
+        void step() ;
 
-    u16 read16(u32 a);
-};
+    private:
+        u16 prs, prb, pps, ppb;
+        FIL ptpfile, ptrfile ;
+} ;

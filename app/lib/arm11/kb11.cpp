@@ -893,7 +893,7 @@ void KB11::ptstate() {
 
     disasm(PC);
 
-    Console::get()->printf("\r\n    PS:%o\r\n", PSW);
+    Console::get()->printf("\r\n    PS:%06o\r\n", PSW);
 }
 
 void KB11::pirq() {
