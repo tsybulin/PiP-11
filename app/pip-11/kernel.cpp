@@ -29,6 +29,7 @@ static configuration_t configurations[5] = {
 extern queue_t keyboard_queue ;
 TShutdownMode startup(const char *rkfile, const char *rlfile) ;
 CSerialDevice *pSerial ;
+CI2CMaster *pI2cMaster ;
 
 static int config_handler(void* user, const char* section, const char* name, const char* value) {
     int c = -1 ;
@@ -81,11 +82,13 @@ CKernel::CKernel (void)
 	logger(options.GetLogLevel (), &timer),
 	cpuThrottle(CPUSpeedMaximum),
 	emmc(&interrupt, &timer, &actLED),
+	i2cMaster(1),
 
 	console(&actLED, &deviceNameService, &interrupt, &timer),
 	multiCore(CMemorySystem::Get(), &console, &cpuThrottle)
 {
 	pSerial = &serial ;
+	pI2cMaster = &i2cMaster ;
 }
 
 CKernel::~CKernel (void) {
@@ -126,6 +129,10 @@ boolean CKernel::Initialize (void) {
 
 	if (bOK) {
 		bOK = emmc.Initialize ();
+	}
+
+	if (bOK) {
+		bOK = i2cMaster.Initialize() ;
 	}
 
 	if (bOK) {

@@ -3,26 +3,52 @@
 #include "arm11.h"
 #include "kb11.h"
 
+#include <circle/i2cmaster.h>
 #include <cons/cons.h>
+
+#define I2C_SLAVE 050
+const u8 PC11_I2C_PRS = 050 ;
+const u8 PC11_I2C_PRB = 052 ;
+const u8 PC11_I2C_PPS = 054 ;
+const u8 PC11_I2C_PPB = 056 ;
+const u8 PC11_I2C_RST = 060 ;
 
 extern volatile bool interrupted ;
 extern KB11 cpu;
+extern CI2CMaster *pI2cMaster ;
+
+static u16 pc11_i2c_read(const u8 addr) {
+    u8 result[3] = {0, 0, 0} ;
+    int r = pI2cMaster->WriteReadRepeatedStart(I2C_SLAVE, &addr, 1, result, 3) ;
+    if (r != 3 || !result[2]) {
+        gprintf("pc11_i2c_read: a=%03o, r=%d, ret=%03o", addr, r, result[2]) ;
+        return 0 ;
+    }
+
+    return result[0] | (result[1] << 8) ;
+}
+
+static void pc11_i2c_write(const u8 addr, const u16 v) {
+    u8 request[3] = {(u8)(addr | 0100), (u8)(v & 0377), (u8)((v >> 8) & 0377)} ;
+    u8 result = 0 ;
+    int r = pI2cMaster->WriteReadRepeatedStart(I2C_SLAVE, request, 3, &result, 1) ;
+    if (r != 1 || !result) {
+        gprintf("pc11_i2c_write: a=%03o, v=%06o, r=%d, ret=%03o", addr, r, result) ;
+    }
+}
 
 u16 PC11::read16(u32 a) {
     switch (a) {
         case PC11_PRS:
-            return prs ;
+            return pc11_i2c_read(PC11_I2C_PRS) ;
         case PC11_PRB:
-            prs = prs & ~0200 ; // clear DONE,
-            return prb;
+            return pc11_i2c_read(PC11_I2C_PRB) ;
         case PC11_PPS:
-            return pps ;
+            return pc11_i2c_read(PC11_I2C_PRS) ;
         case PC11_PPB:
-            return ppb ;
+            return pc11_i2c_read(PC11_I2C_PPB) ; ;
         default:
-            gprintf("pc11::read16 invalid read from %06o\n", a);
-            trap(004);
-            while(!interrupted) {}
+            break ;
     }
     return 0 ;
 }
@@ -30,23 +56,24 @@ u16 PC11::read16(u32 a) {
 void PC11::write16(const u32 a, const u16 v) {
     switch (a) {
         case PC11_PRS:
-            prs = (prs & 0177676) | (v & 0101) ; //only bits 6,0 is write-able
-            if (prs & 01) {
-                prs = (prs & ~0200) | 04000 ; // if GO - clear buffer; clear done and set busy
-                prb = 0 ;
+            pc11_i2c_write(PC11_I2C_PRS, v) ;
+            if (v & 01) {
+                ptrcheck = true ;
             }
             break;
         case PC11_PRB:
             break ; //read-only
-        case PC11_PPS:
-            pps = (pps & 0100200) | (v & 077577) ; // bits 15,7 are read-only
-            if ((pps & 0100) && (pps & 0100200)) {
-                cpu.interrupt(INTPTP, 5) ;
+        case PC11_PPS: {
+                pc11_i2c_write(PC11_I2C_PPS, v) ;
+                u16 pps = pc11_i2c_read(PC11_I2C_PPS) ;
+                if ((pps & 0100) && (pps & 0100200)) {
+                    cpu.interrupt(INTPTP, 5) ;
+                }
             }
             break ;
         case PC11_PPB:
-            ppb = v ;
-            pps = pps & ~0200 ;
+            pc11_i2c_write(PC11_I2C_PPB, v) ;
+            ptpcheck = true ;
             break;
         default:
             gprintf("pc11::write16 invalid write to %06o\n", a);
@@ -56,62 +83,40 @@ void PC11::write16(const u32 a, const u16 v) {
 }
 
 void PC11::reset() {
-    prs = 0 ;
-    pps = 0200 ; // clear interrupt, set ready
-
-    f_close(&ptpfile) ;
-
-    FRESULT fr = f_open(&ptpfile, "PTP.TAP", FA_WRITE | FA_CREATE_ALWAYS) ;
-    if (fr != FR_OK && fr != FR_EXIST) {
-        gprintf("pc11 ptp f_open %d", fr) ;
-        pps |= 0100000 ;
-    } else {
-        f_truncate(&ptpfile) ;
-        f_lseek(&ptpfile, 0) ;
-    }
-
-    f_close(&ptrfile) ;
-
-    fr = f_open(&ptrfile, "PTR.TAP", FA_READ | FA_OPEN_ALWAYS) ;
-    if (fr != FR_OK && fr != FR_EXIST) {
-        gprintf("pc11 ptr f_open %d", fr) ;
-        prs |= 0100000 ;
-    } else {
-        f_lseek(&ptrfile, 0) ;
-    }
+    ptrcheck = false ;
+    ptpcheck = false ;
+    pI2cMaster->Write(I2C_SLAVE, &PC11_I2C_RST, 1) ;
 }
 
-void PC11::step() {
-    // ptr
-    if (prs & 01) {
-        UINT br = 0 ;
-        FRESULT fr = f_read(&ptrfile, &prb, 1, &br) ;
-        if (fr != FR_OK || br != 1) {
-            prs |= 0100000 ;
-            f_lseek(&ptrfile, 0) ;
-        }
-        
-        prs = (prs & ~04001) | 0200 ; // clear enable, busy. set done
+int pc11_delay = 0;
 
-        if (prs & 0100) {
-            cpu.interrupt(INTPTR, 4) ;
+void PC11::step() {
+    if (pc11_delay++ < 200) {
+        return ;
+    }
+
+    pc11_delay = 0 ;
+
+    // ptr
+    if (ptrcheck) {
+        u16 prs = pc11_i2c_read(PC11_I2C_PRS) ;
+        if (prs & 0200) {
+            ptrcheck = false ;
+            if (prs & 0100) {
+                cpu.interrupt(INTPTR, 4) ;
+            }
         }
     }
 
     // ptp
-    if ((pps & 0200) == 0) {
-        UINT bw = 0 ;
-        FRESULT fr = f_write(&ptpfile, &ppb, 1, &bw) ;
-        if (fr != FR_OK || bw != 1) {
-            pps |= 0100000 ;
-            gprintf("pc11 ptp f_write res=%d, bytes=%d", fr, bw) ;
-        } else {
-            f_sync(&ptpfile) ;
-        }
+    if (ptpcheck) {
+        u16 pps = pc11_i2c_read(PC11_I2C_PPS) ;
+        if (pps & 0200) {
+            ptpcheck = false ;
 
-        pps |= 0200 ; // set ready
-        if (pps & 0100) {
-            cpu.interrupt(INTPTP, 4) ;
+            if (pps & 0100) {
+                cpu.interrupt(INTPTP, 4) ;
+            }
         }
     }
 }

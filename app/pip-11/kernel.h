@@ -18,6 +18,7 @@
 #include <cons/cons.h>
 #include <sdcard/emmc.h>
 #include <fatfs/ff.h>
+#include <circle/i2cmaster.h>
 
 #include "mcore.h"
 
@@ -44,6 +45,7 @@ class CKernel {
 		CCPUThrottle		cpuThrottle;
 		CEMMCDevice		    emmc;
 		FATFS				fileSystem ;
+		CI2CMaster    		i2cMaster ;
 
 		Console				console ;
 		MultiCore			multiCore ;

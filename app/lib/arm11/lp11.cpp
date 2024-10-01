@@ -1,5 +1,6 @@
-#include "kb11.h"
 #include "lp11.h"
+
+#include "kb11.h"
 
 extern KB11 cpu;
 extern volatile bool interrupted ;

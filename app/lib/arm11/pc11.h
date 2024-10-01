@@ -1,7 +1,6 @@
 #pragma once
 
 #include <circle/types.h>
-#include <fatfs/ff.h>
 
 #define PC11_PRS 0777550
 #define PC11_PRB 0777552
@@ -16,6 +15,5 @@ class PC11 {
         void step() ;
 
     private:
-        u16 prs, prb, pps, ppb;
-        FIL ptpfile, ptrfile ;
+        bool ptrcheck, ptpcheck ;
 } ;
