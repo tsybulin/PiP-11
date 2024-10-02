@@ -44,7 +44,7 @@ u16 PC11::read16(u32 a) {
         case PC11_PRB:
             return pc11_i2c_read(PC11_I2C_PRB) ;
         case PC11_PPS:
-            return pc11_i2c_read(PC11_I2C_PRS) ;
+            return pc11_i2c_read(PC11_I2C_PPS) ;
         case PC11_PPB:
             return pc11_i2c_read(PC11_I2C_PPB) ; ;
         default:
