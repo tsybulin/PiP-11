@@ -267,7 +267,12 @@ TShutdownMode CKernel::Run (void) {
 
 						CScheduler scheduler ;
 
-						CNetSubSystem net;
+						const u8 ipaddress[] = {172, 16, 103, 101} ;
+						const u8 netmask[]   = {255, 255, 255, 0} ;
+						const u8 gateway[]   = {172, 16, 103, 254} ;
+						const u8 dns[]       = {172, 16, 103, 254} ;
+						CNetSubSystem net(ipaddress, netmask, gateway, dns, "pip11") ;
+
 						if (!net.Initialize()) {
 							gprintf("Net initilize error") ;
 							while(!interrupted) {} ;
