@@ -15,57 +15,57 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         return;
     }
     switch (a & ~077) {
-    case RK11_CSR:
-        rk11.write16(a, v);
-        return;
-    case RL11_CSR:
-        rl11.write16(a, v);
-        return;
-    case DL11_CSR:
-        switch (a & ~7) {
-        case DL11_CSR:
-            dl11.write16(a, v);
+        case RK11_CSR:      
+            rk11.write16(a, v);
             return;
-        }
-        trap(INTBUS);
-    case 0777500:
-        switch (a) {
-            case LP11_CSR:
-            case 0777516:
-                lp11.write16(a, v);
+        case RL11_CSR:
+            rl11.write16(a, v);
+            return;
+        case DL11_CSR:
+            switch (a & ~7) {
+            case DL11_CSR:
+                dl11.write16(a, v);
                 return;
-            case PC11_PRS:
-            case PC11_PRB:
-            case PC11_PPS:
-            case PC11_PPB:
-                ptr_ptp.write16(a, v) ;
-                return ;
-            case KW11_CSR:
-                kw11.write16(a, v);
-                return;
-            case 0777572:
-                cpu.mmu.SR[0] = v;
-                return;
-            case 0777574:
-                cpu.mmu.SR[1] = v;
-                return;
-            case 0777576:
-                // do nothing, SR2 is read only
-                return;
-            default:
-                cons.write16(a, v);
-                return;
-        }
-    case 0772200:
-    case 0772300:
-    case 0777600:
-        cpu.mmu.write16(a, v);
-        return;
-    case 0777700:
-        cpu.write16(a, v) ;
-    default:
-        // gprintf("unibus: write to invalid address %06o at %06o", a, cpu.PC);
-        trap(INTBUS);
+            }
+            trap(INTBUS);
+        case 0777500:
+            switch (a) {
+                case LP11_LPS:
+                case LP11_LPD:
+                    lp11.write16(a, v);
+                    return;
+                case PC11_PRS:
+                case PC11_PRB:
+                case PC11_PPS:
+                case PC11_PPB:
+                    ptr_ptp.write16(a, v) ;
+                    return ;
+                case KW11_CSR:
+                    kw11.write16(a, v);
+                    return;
+                case 0777572:
+                    cpu.mmu.SR[0] = v;
+                    return;
+                case 0777574:
+                    cpu.mmu.SR[1] = v;
+                    return;
+                case 0777576:
+                    // do nothing, SR2 is read only
+                    return;
+                default:
+                    cons.write16(a, v);
+                    return;
+            }
+        case 0772200:
+        case 0772300:
+        case 0777600:
+            cpu.mmu.write16(a, v);
+            return;
+        case 0777700:
+            cpu.write16(a, v) ;
+        default:
+            // gprintf("unibus: write to invalid address %06o at %06o", a, cpu.PC);
+            trap(INTBUS);
     }
     return;
 }
@@ -91,8 +91,8 @@ u16 UNIBUS::read16(const u32 a) {
             trap(INTBUS);
         case 0777500:
             switch (a) {
-                case LP11_CSR:
-                case 0777516:
+                case LP11_LPS:
+                case LP11_LPD:
                     return lp11.read16(a);
                 case PC11_PRS:
                 case PC11_PRB:

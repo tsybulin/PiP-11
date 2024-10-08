@@ -14,6 +14,7 @@ enum INTVEC {
     INTPTP    = 0074,
     INTCLOCK  = 0100,
     INTRL     = 0160,
+    INTLP     = 0200,
     INTRK     = 0220,
     INTFIS    = 0244,
     INTFPP    = 0244,
