@@ -107,6 +107,7 @@ void setup(const char *rkfile, const char *rlfile) {
     systime = CTimer::GetClockTicks64() ;
 	
     cpu.reset(0140000);
+    cpu.cpuStatus = CPU_STATUS_ENABLE ;
 }
 
 jmp_buf trapbuf;

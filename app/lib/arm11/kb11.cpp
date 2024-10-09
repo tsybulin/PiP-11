@@ -467,8 +467,9 @@ void KB11::step() {
                     if (currentmode()) {
                         trap(010);
                     }
-                    Console::get()->printf("HALT: DR: %06o\r\n", displayregister);
+                    Console::get()->printf("HALT:\r\n");
                     printstate();
+                    cpuStatus = CPU_STATUS_HALT ;
                     while(!interrupted) ;
                 case 1: // WAIT 000001
                     WAIT();

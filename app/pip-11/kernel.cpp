@@ -11,6 +11,7 @@
 
 #define DRIVE "SD:"
 extern volatile bool interrupted ;
+extern volatile bool core3active ;
 
 typedef struct configuration {
     CString name;
@@ -314,6 +315,8 @@ TShutdownMode CKernel::Run (void) {
 	screen.ClearScreen() ;
 	console.showStatus() ;
 	console.showRusLat() ;
+
+	core3active = true ;
 
 	TShutdownMode mode = startup(rk, rl) ;
 
