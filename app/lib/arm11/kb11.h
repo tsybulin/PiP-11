@@ -10,7 +10,8 @@ enum { FLAGN = 8, FLAGZ = 4, FLAGV = 2, FLAGC = 1 };
 enum CPUStatus : u8 {
     CPU_STATUS_UNKNOWN,
     CPU_STATUS_ENABLE,
-    CPU_STATUS_HALT
+    CPU_STATUS_HALT,
+    CPU_STATUS_STEP
 } ;
 
 class API ;
@@ -61,7 +62,7 @@ class KB11 {
     u16 PSW;              // processor status word
     u16 R[8]; // R0-R7
 
-    CPUStatus cpuStatus = CPU_STATUS_UNKNOWN ;
+    volatile CPUStatus cpuStatus = CPU_STATUS_UNKNOWN ;
   private:
     u16 oldPSW;
     u16 stacklimit, switchregister, displayregister;

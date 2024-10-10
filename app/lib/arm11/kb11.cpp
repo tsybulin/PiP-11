@@ -470,7 +470,7 @@ void KB11::step() {
                     Console::get()->printf("HALT:\r\n");
                     printstate();
                     cpuStatus = CPU_STATUS_HALT ;
-                    while(!interrupted) ;
+                    // while(!interrupted) ;
                 case 1: // WAIT 000001
                     WAIT();
                     return;

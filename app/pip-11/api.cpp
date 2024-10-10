@@ -50,6 +50,9 @@ void API::processResponse(ApiCommand command, u32 arg0, u16 arg1) {
                 case CPU_STATUS_HALT:
                     cpu.cpuStatus = CPU_STATUS_HALT ;
                     break ;
+                case CPU_STATUS_STEP:
+                    cpu.cpuStatus = CPU_STATUS_STEP ;
+                    break ;
                 default:
                     gprintf("API: unknown cpu state 0%06o", arg0) ;
                     break ;
@@ -94,6 +97,42 @@ void API::processResponse(ApiCommand command, u32 arg0, u16 arg1) {
                 }
                 this->sendCommand(API_COMMAND_SET_DR, arg0, data) ;
             }
+            break ;
+
+        case API_COMMAND_DEPOSIT:
+            switch (arg0) {
+                    case 0177707:
+                        cpu.R[7] = arg1 ;
+                        break ;
+                    case 0177706:
+                        cpu.R[6] = arg1 ;
+                        break ;
+                    case 0177705:
+                        cpu.R[5] = arg1 ;
+                        break ;
+                    case 0177704:
+                        cpu.R[4] = arg1 ;
+                        break ;
+                    case 0177703:
+                        cpu.R[3] = arg1 ;
+                        break ;
+                    case 0177702:
+                        cpu.R[2] = arg1 ;
+                        break ;
+                    case 0177701:
+                        cpu.R[1] = arg1 ;
+                        break ;
+                    case 0177700:
+                        cpu.R[0] = arg1 ;
+                        break ;
+                case 0177570:
+                    cpu.switchregister = arg1 ;
+                    break ;
+                default:
+                    cpu.write16(arg0, arg1) ;
+                    break ;
+            }
+            this->sendCommand(API_COMMAND_SET_DR, arg0, arg1) ;
             break ;
 
         case API_COMMAND_SET_DR:

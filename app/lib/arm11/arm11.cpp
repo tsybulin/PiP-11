@@ -125,6 +125,10 @@ void loop() {
     }
 
     while (!interrupted) {
+        if (cpu.cpuStatus == CPU_STATUS_HALT) {
+            continue; ;
+        }
+
         if ((cpu.itab[0].vec > 0) && (cpu.itab[0].pri > cpu.priority())) {
             cpu.trapat(cpu.itab[0].vec);
             cpu.popirq();
@@ -151,6 +155,10 @@ void loop() {
         if (nowtime - systime > clkdiv) {
             cpu.unibus.kw11.tick();
             systime = nowtime;
+        }
+
+        if (cpu.cpuStatus == CPU_STATUS_STEP) {
+            cpu.cpuStatus = CPU_STATUS_HALT ;
         }
     }
 }
