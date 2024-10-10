@@ -4,7 +4,7 @@
 
 CIRCLEHOME = ../..
 
-OBJS	= main.o kernel.o ini.o mcore.o firmware.o
+OBJS	= main.o kernel.o ini.o mcore.o firmware.o api.o
 
 LIBS	= $(CIRCLEHOME)/lib/libcircle.a \
           $(CIRCLEHOME)/lib/usb/libusb.a \

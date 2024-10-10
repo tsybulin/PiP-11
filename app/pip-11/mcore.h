@@ -11,6 +11,8 @@
 
 #include <cons/cons.h>
 
+class API ;
+
 class MultiCore : public CMultiCoreSupport {
     public:
         MultiCore(CMemorySystem *pMemorySystem, Console *pConsole, CCPUThrottle *pCpuThrottle) ;
@@ -22,6 +24,8 @@ class MultiCore : public CMultiCoreSupport {
     private:
         Console *console ;
         CCPUThrottle *cpuThrottle ;
+        bool core3inited ;
+        API *api ;
 } ;
 
 
