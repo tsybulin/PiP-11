@@ -30,7 +30,6 @@ void KB11::reset(u16 start) {
 
     R[7] = start;
     stacklimit = 0xff;
-    switchregister = 0173030;
     switchregister = 0;
     unibus.reset();
     wtstate = false;
@@ -83,7 +82,7 @@ void KB11::ADD(const u16 instr) {
     if (((~src ^ dst) & (src ^ sum)) & 0x8000) {
         PSW |= FLAGV;
     }
-    if ((int32_t(src) + int32_t(dst)) > 0xFFFF) {
+    if ((s32(src) + s32(dst)) > 0xFFFF) {
         PSW |= FLAGC;
     }
 }
@@ -108,11 +107,11 @@ void KB11::SUB(const u16 instr) {
 // MUL 070RSS
 void KB11::MUL(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
-	int32_t val1 = R[reg];
+	s32 val1 = R[reg];
 	if (val1 & 0x8000) {
 		val1 = -((0xFFFF ^ val1) + 1);
 	}
-	int32_t val2 = read<2>(DA<2>(instr));
+	s32 val2 = read<2>(DA<2>(instr));
 	if (val2 & 0x8000) {
 		val2 = -((0xFFFF ^ val2) + 1);
 	}
@@ -133,8 +132,8 @@ void KB11::MUL(const u16 instr) {
 
 void KB11::DIV(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
-	const int32_t val1 = (R[reg] << 16) | (R[reg | 1]);
-	int32_t val2 = read<2>(DA<2>(instr));
+	const s32 val1 = (R[reg] << 16) | (R[reg | 1]);
+	s32 val2 = read<2>(DA<2>(instr));
 	PSW &= 0xFFF0;
 	if (val2 > 32767)
 		val2 |= 0xffff0000;
@@ -161,7 +160,7 @@ void KB11::ASH(const u16 instr) {
 	const auto val1 = R[reg];
 	auto val2 = read<2>(DA<2>(instr)) & 077;
 	PSW &= 0xFFF0;
-	int32_t sval = val1;
+	s32 sval = val1;
 	if (val2 & 040) {
 		val2 = 0100 - val2;
 		if (sval & 0100000)
@@ -197,7 +196,7 @@ void KB11::ASHC(const u16 instr) {
 	auto val2 = read<2>(DA<2>(instr)) & 077;
 	PSW &= 0xFFF0;
 	u32 msk;
-	int64_t sval = (int)val1;
+	s64 sval = (int)val1;
 	if (val2 & 040)
 	{
 		val2 = 0100 - val2;
@@ -879,13 +878,17 @@ void KB11::printstate() {
     ptstate();
 }
 
+static const char *modnames[4] = {
+    "KK", "SS", "--", "UU"
+} ;
+
 void KB11::ptstate() {
     Console::get()->printf("    R0 %06o R1 %06o R2 %06o R3 %06o\r\n", u16(R[0]), u16(R[1]), u16(R[2]), u16(R[3]));
     Console::get()->printf("    R4 %06o R5 %06o R6 %06o R7 %06o\r\n",
         u16(R[4]), u16(R[5]), u16(R[6]), u16(R[7]));
-    Console::get()->printf("    PSW [%s%s%s%s%s%s",
-        PSW & 0140000 ? "U" : "K",
-        PSW & 0030000 ? "U" : "K",
+    
+    Console::get()->printf("    PSW [%s%s%s%s%s",
+        modnames[currentmode()],
         N() ? "N" : "-",
         Z() ? "Z" : "-",
         V() ? "V" : "-",

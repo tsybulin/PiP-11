@@ -103,7 +103,7 @@ void setup(const char *rkfile, const char *rlfile) {
 		while (!interrupted) ;
 	}
     
-    clkdiv = (uint64_t)1000000 / (uint64_t)60;
+    clkdiv = (u64)1000000 / (u64)60;
     systime = CTimer::GetClockTicks64() ;
 	
     cpu.reset(0140000);

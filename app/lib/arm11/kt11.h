@@ -6,14 +6,15 @@
 class KT11 {
 
   public:
-    u16 SR[4];
+    u16 SR[4]; // MM status registers
 
     template <bool wr>
     inline u32 decode(const u16 a, const u16 mode) {
         if ((SR[0] & 1) == 0) {
             return a > 0157777 ? ((u32)a) + 0600000 : a;
         }
-        const auto i = (a >> 13);
+        
+        const auto i = (a >> 13) ; // page index
  
         if (wr && !pages[mode][i].write()) {
             SR[0] = (1 << 13) | 1;
@@ -24,7 +25,7 @@ class KT11 {
             //SR2 = cpu.PC;
 
             //printf("mmu::decode write to read-only page %06o\n", a);
-            trap(0250); // intfault
+            trap(INTFAULT) ;
         }
         if (!pages[mode][i].read()) {
             SR[0] = (1 << 15) | 1;
@@ -34,7 +35,7 @@ class KT11 {
             }
             // SR2 = cpu.PC;
             gprintf("mmu::decode read from no-access page %06o\n", a);
-            trap(0250); // intfault
+            trap(INTFAULT) ;
         }
         const auto block = (a >> 6) & 0177;
         const auto disp = a & 077;
@@ -53,7 +54,7 @@ class KT11 {
             //       "%03o\r\n",
             //       a, block, pages[mode][i].len());
             SR[0] |= 0200;
-            trap(0250); // intfault
+            trap(INTFAULT) ;
         }
         if (wr) {
             pages[mode][i].pdr |= 1 << 6;
@@ -67,7 +68,8 @@ class KT11 {
     void write16(const u32 a, const u16 v);
 
     struct page {
-        u16 par, pdr;
+        u16 par,  // page address register (base address relocation register)
+            pdr ; // page descriptor register
 
         inline u32 addr() { return par & 07777; }
         inline u8 len() { return (pdr >> 8) & 0x7f; }
@@ -77,5 +79,4 @@ class KT11 {
     };
 
     page pages[4][16] ;
-    void dumppages();
 };

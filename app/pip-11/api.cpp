@@ -57,7 +57,7 @@ void API::processResponse(ApiCommand command, u32 arg0, u16 arg1) {
                     gprintf("API: unknown cpu state 0%06o", arg0) ;
                     break ;
             }
-            this->sendCommand(API_COMMAND_CPU_STATUS, cpu.cpuStatus, 0) ;
+            this->sendCommand(API_COMMAND_CPU_STATUS, cpu.cpuStatus, cpu.R[7]) ;
             break;
 
         case API_COMMAND_EXAMINE: {

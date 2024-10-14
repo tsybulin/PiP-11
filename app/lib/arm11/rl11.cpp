@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "kb11.h"
 
 extern KB11 cpu;
-extern uint64_t systime;
+extern u64 systime;
 
 // This is not good. The conversion of RLDA to a Simh disk image file address is obscure
 
@@ -163,9 +163,9 @@ void RL11::step()
     }
 
 retry:
-    int32_t pos = GET_DA(RLDA) * 256;
-    int32_t maxwc = (RL_NUMSC - GET_SECT(RLDA)) * RL_NUMWD;
-    int16_t wc = 0200000 - RLMP;
+    s32 pos = GET_DA(RLDA) * 256;
+    s32 maxwc = (RL_NUMSC - GET_SECT(RLDA)) * RL_NUMWD;
+    s16 wc = 0200000 - RLMP;
 
     if (wc > maxwc)                                         /* Will there be a track overrun? */
         wc = maxwc;
