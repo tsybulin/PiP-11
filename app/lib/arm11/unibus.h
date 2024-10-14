@@ -7,8 +7,7 @@
 #include "rl11.h"
 #include "dl11.h"
 
-const u32 IOBASE_18BIT = 0760000;
-const u32 MEMSIZE = (128+64+32) * 1024;
+const u32 MEMSIZE = 0700000 ;
 
 class UNIBUS {
 
