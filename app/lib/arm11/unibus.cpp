@@ -61,6 +61,14 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         case 0777600:
             cpu.mmu.write16(a, v);
             return;
+        case 0772500:
+            switch (a) {
+                case 0772516:
+                    cpu.mmu.SR[3] = v & 017 ;
+                    return ;
+                default:
+                    trap(INTBUS);
+            }
         case 0777700:
             cpu.write16(a, v) ;
         default:
@@ -114,6 +122,13 @@ u16 UNIBUS::read16(const u32 a) {
         case 0772300:
         case 0777600:
             return cpu.mmu.read16(a);
+        case 0772500:
+            switch (a) {
+                case 0772516:
+                    return cpu.mmu.SR[3] & 017 ;
+                default:
+                    trap(INTBUS);
+            }
         default:
             //printf("unibus: read from invalid address %06o\n", a);
             trap(INTBUS);
