@@ -56,9 +56,9 @@ void UNIBUS::write16(const u32 a, const u16 v) {
                     cons.write16(a, v);
                     return;
             }
-        case 0772200:
-        case 0772300:
-        case 0777600:
+        case 0772200: // KK
+        case 0772300: // SS
+        case 0777600: // UU
             cpu.mmu.write16(a, v);
             return;
         case 0772500:
@@ -118,9 +118,9 @@ u16 UNIBUS::read16(const u32 a) {
                 default:
                     return cons.read16(a);
             }
-        case 0772200:
-        case 0772300:
-        case 0777600:
+        case 0772200: // SS
+        case 0772300: // KK
+        case 0777600: // UU
             return cpu.mmu.read16(a);
         case 0772500:
             switch (a) {
