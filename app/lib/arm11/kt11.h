@@ -9,12 +9,12 @@ class KT11 {
     u16 SR[4]; // MM status registers
 
     template <bool wr>
-    inline u32 decode(const u16 a, const u16 mode) {
+    inline u32 decode(const u16 a, const u16 mode, bool d = false) {
         if ((SR[0] & 1) == 0) {
             return a > 0157777 ? ((u32)a) + 0600000 : a;
         }
         
-        const auto i = (a >> 13) ; // page index
+        const auto i = (a >> 13) + (d ? 8 : 0); // page index
  
         if (wr && !pages[mode][i].write()) {
             SR[0] = (1 << 13) | 1;
