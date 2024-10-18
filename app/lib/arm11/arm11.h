@@ -8,6 +8,8 @@ enum INTVEC {
     INTINVAL  = 0010,
     INTDEBUG  = 0014,
     INTIOT    = 0020,
+    INTEMT    = 0030,
+    INTTRAP   = 0034,
     INTTTYIN  = 0060,
     INTTTYOUT = 0064,
     INTPTR    = 0070,

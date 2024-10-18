@@ -35,22 +35,8 @@ void KB11::reset(u16 start) {
     wtstate = false;
 }
 
-inline u16 KB11::read16(const u16 va) {
-    const auto a = mmu.decode<false>(va, currentmode());
-    switch (a) {
-    case 0777776:
-        return PSW;
-    case 0777774:
-        return stacklimit;
-    case 0777570:
-        return switchregister;
-    default:
-        return unibus.read16(a);
-    }
-}
-
-void KB11::write16(const u16 va, const u16 v) {
-    const auto a = mmu.decode<true>(va, currentmode());
+void KB11::write16(const u16 va, const u16 v, bool d) {
+    const auto a = mmu.decode<true>(va, currentmode(), d);
     switch (a) {
         case 0777772:
             pir_str = v ;
@@ -74,9 +60,11 @@ void KB11::write16(const u16 va, const u16 v) {
 void KB11::ADD(const u16 instr) {
     const auto src = SS<2>(instr);
     const auto da = DA<2>(instr);
-    const auto dst = read<2>(da);
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
+    const auto dst = read<2>(da, dpage);
     const auto sum = src + dst;
-    write<2>(da, sum);
+    write<2>(da, sum, dpage);
     PSW &= 0xFFF0;
     setNZ<2>(sum);
     if (((~src ^ dst) & (src ^ sum)) & 0x8000) {
@@ -91,7 +79,9 @@ void KB11::ADD(const u16 instr) {
 void KB11::SUB(const u16 instr) {
     const auto val1 = SS<2>(instr);
     const auto da = DA<2>(instr);
-    const auto val2 = read<2>(da);
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
+    const auto val2 = read<2>(da, dpage);
     const auto uval = (val2 - val1) & 0xFFFF;
     PSW &= 0xFFF0;
     write<2>(da, uval);
@@ -111,7 +101,11 @@ void KB11::MUL(const u16 instr) {
 	if (val1 & 0x8000) {
 		val1 = -((0xFFFF ^ val1) + 1);
 	}
-	s32 val2 = read<2>(DA<2>(instr));
+
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
+
+	s32 val2 = read<2>(DA<2>(instr), dpage);
 	if (val2 & 0x8000) {
 		val2 = -((0xFFFF ^ val2) + 1);
 	}
@@ -133,7 +127,9 @@ void KB11::MUL(const u16 instr) {
 void KB11::DIV(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
 	const s32 val1 = (R[reg] << 16) | (R[reg | 1]);
-	s32 val2 = read<2>(DA<2>(instr));
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
+	s32 val2 = read<2>(DA<2>(instr), dpage);
 	PSW &= 0xFFF0;
 	if (val2 > 32767)
 		val2 |= 0xffff0000;
@@ -158,7 +154,9 @@ void KB11::DIV(const u16 instr) {
 void KB11::ASH(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
 	const auto val1 = R[reg];
-	auto val2 = read<2>(DA<2>(instr)) & 077;
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
+	auto val2 = read<2>(DA<2>(instr), dpage) & 077;
 	PSW &= 0xFFF0;
 	s32 sval = val1;
 	if (val2 & 040) {
@@ -193,7 +191,9 @@ void KB11::ASH(const u16 instr) {
 void KB11::ASHC(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
 	const auto val1 = ((u32)(R[reg]) << 16) | R[reg | 1];
-	auto val2 = read<2>(DA<2>(instr)) & 077;
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
+	auto val2 = read<2>(DA<2>(instr), dpage) & 077;
 	PSW &= 0xFFF0;
 	u32 msk;
 	s64 sval = (int)val1;
@@ -226,8 +226,10 @@ void KB11::ASHC(const u16 instr) {
 void KB11::XOR(const u16 instr) {
     const auto reg = R[(instr >> 6) & 7];
     const auto da = DA<2>(instr);
-    const auto dst = reg ^ read<2>(da);
-    write<2>(da, dst);
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
+    const auto dst = reg ^ read<2>(da, dpage);
+    write<2>(da, dst, dpage);
     setNZ<2>(dst);
 }
 
@@ -252,9 +254,11 @@ void KB11::FIS(const u16 instr)
     u16 adr = R[instr & 7];      // Base address from specfied reg
     float op1, op2;
 
-    bfr.xint = read<2>(adr + 6) | (read<2>(adr + 4) << 16);
+    const bool dpage = denabled() ;
+
+    bfr.xint = read<2>(adr + 6, dpage) | (read<2>(adr + 4, dpage) << 16);
     op1 = bfr.xflt;
-    bfr.xint = read<2>(adr + 2) | (read<2>(adr) << 16);
+    bfr.xint = read<2>(adr + 2, dpage) | (read<2>(adr, dpage) << 16);
     op2 = bfr.xflt;
     PSW &= ~(FLAGN | FLAGV | FLAGZ | FLAGC);
     switch (instr & 070) {
@@ -280,33 +284,34 @@ void KB11::FIS(const u16 instr)
         PSW |= FLAGZ;
     if (bfr.xflt < 0.0)
         PSW |= FLAGN;
-    write<2>(adr + 4, bfr.xint >> 16);
-    write<2>(adr + 6, bfr.xint);
+    write<2>(adr + 4, bfr.xint >> 16, dpage);
+    write<2>(adr + 6, bfr.xint, dpage);
 }
 
 
 // MTPS
 
-void KB11::MTPS(const u16 instr)
-
-{
+void KB11::MTPS(const u16 instr) {
     const auto da = DA<1>(instr);
-    auto src = read<1>(da);
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
+    auto src = read<1>(da, dpage);
     PSW = (PSW & 0177400) | (src & 0357);
 }
 
 // MFPS
 
-void KB11::MFPS(const u16 instr)
-{
+void KB11::MFPS(const u16 instr) {
     const auto da = DA<1>(instr);
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
     auto dst = PSW & 0357;
     if (PSW & msb<1>() && ((instr & 030) == 0)) {
         dst |= 0177400;
-        write<2>(da, dst);
+        write<2>(da, dst, dpage) ;
+    } else{
+        write<1>(da, dst, dpage) ;
     }
-    else
-        write<1>(da, dst);
     setNZ<1>(PSW & 0377);
 }
 
@@ -385,7 +390,7 @@ void KB11::RTS(const u16 instr) {
 
 // MFPT 000007
 void KB11::MFPT() {
-    trap(010); // not a PDP11/44
+    trap(INTINVAL); // not a PDP11/44
 }
 
 // RTI 000004, RTT 000006
@@ -421,10 +426,12 @@ void KB11::RESET() {
 
 // SWAB 0003DD
 void KB11::SWAB(const u16 instr) {
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
     const auto da = DA<2>(instr);
-    auto dst = read<2>(da);
+    auto dst = read<2>(da, dpage);
     dst = (dst << 8) | (dst >> 8);
-    write<2>(da, dst);
+    write<2>(da, dst, dpage);
     PSW &= 0xFFF0;
     if ((dst & 0xff) == 0) {
         PSW |= FLAGZ;
@@ -436,11 +443,13 @@ void KB11::SWAB(const u16 instr) {
 
 // SXT 0067DD
 void KB11::SXT(const u16 instr) {
+    const auto mode = (instr >> 3) & 7;
+    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
     if (N()) {
-        write<2>(DA<2>(instr), 0xffff);
+        write<2>(DA<2>(instr), 0xffff, dpage);
         PSW &= ~FLAGZ;
     } else {
-        write<2>(DA<2>(instr), 0);
+        write<2>(DA<2>(instr), 0, dpage);
         PSW |= FLAGZ;
     }
     PSW &= ~FLAGV;
@@ -464,20 +473,19 @@ void KB11::step() {
                             switch (instr) {
                                 case 0: // HALT 000000
                                     if (currentmode()) {
-                                        trap(010);
+                                        trap(INTINVAL);
                                     }
                                     Console::get()->printf("HALT:\r\n");
                                     printstate();
                                     cpuStatus = CPU_STATUS_HALT ;
-                                    // while(!interrupted) ;
                                 case 1: // WAIT 000001
                                     WAIT();
                                     return;
                                 case 3:          // BPT  000003
-                                    trap(014); // Trap 14 - BPT
+                                    trap(INTDEBUG); // Trap 14 - BPT
                                     return;
                                 case 4: // IOT  000004
-                                    trap(020);
+                                    trap(INTIOT);
                                     return;
                                 case 5: // RESET 000005
                                     RESET();
@@ -505,7 +513,7 @@ void KB11::step() {
                                     return;
                                 case 3: // SPL 00023N
                                     if (currentmode())
-                                        trap(010);
+                                        trap(INTINVAL);
                                     PSW = ((PSW & 0xf81f) | ((instr & 7) << 5));
                                     return;
                                 case 4: // CLR CC 00024C Part 1 without N
@@ -718,9 +726,9 @@ void KB11::step() {
                         }
                         return;
                     case 8:          // EMT 1040 operand
-                        trap(030); // Trap 30 - EMT instruction
+                        trap(INTEMT); // Trap 30 - EMT instruction
                     case 9:          // TRAP 1044 operand
-                        trap(034); // Trap 34 - TRAP instruction
+                        trap(INTTRAP); // Trap 34 - TRAP instruction
                     default: // Remaining 10xxxx instructions where xxxx >= 05000
                         switch ((instr >> 6) & 077) { // 10xxDD group
                             case 050:                     // CLRB 1050DD
