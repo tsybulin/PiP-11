@@ -92,7 +92,7 @@ void disasmaddr(u16 m, u32 a) {
         switch (m) {
         case 027:
             a += 2;
-            Console::get()->printf("$%06o", cpu.unibus.read16(a));
+            Console::get()->printf("#%06o", cpu.unibus.read16(a));
             return;
         case 037:
             a += 2;
