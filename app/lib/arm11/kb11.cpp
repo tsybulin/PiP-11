@@ -59,10 +59,11 @@ void KB11::write16(const u16 va, const u16 v, bool d) {
 // ADD 06SSDD
 void KB11::ADD(const u16 instr) {
     const auto src = SS<2>(instr);
-    const auto da = DA<2>(instr);
-    const auto dst = read<2>(da);
+    Operand op = DA<2>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const auto dst = read<2>(op.operand, dpage);
     const auto sum = src + dst;
-    write<2>(da, sum);
+    write<2>(op.operand, sum, dpage);
     PSW &= 0xFFF0;
     setNZ<2>(sum);
     if (((~src ^ dst) & (src ^ sum)) & 0x8000) {
@@ -76,11 +77,12 @@ void KB11::ADD(const u16 instr) {
 // SUB 16SSDD
 void KB11::SUB(const u16 instr) {
     const auto val1 = SS<2>(instr);
-    const auto da = DA<2>(instr);
-    const auto val2 = read<2>(da);
+    Operand op = DA<2>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const auto val2 = read<2>(op.operand, dpage);
     const auto uval = (val2 - val1) & 0xFFFF;
     PSW &= 0xFFF0;
-    write<2>(da, uval);
+    write<2>(op.operand, uval, dpage);
     setNZ<2>(uval);
     if (((val1 ^ val2) & (~val1 ^ uval)) & 0x8000) {
         PSW |= FLAGV;
@@ -98,7 +100,9 @@ void KB11::MUL(const u16 instr) {
 		val1 = -((0xFFFF ^ val1) + 1);
 	}
 
-	s32 val2 = read<2>(DA<2>(instr));
+    Operand op = DA<2>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+	s32 val2 = read<2>(op.operand, dpage);
 	if (val2 & 0x8000) {
 		val2 = -((0xFFFF ^ val2) + 1);
 	}
@@ -120,7 +124,9 @@ void KB11::MUL(const u16 instr) {
 void KB11::DIV(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
 	const s32 val1 = (R[reg] << 16) | (R[reg | 1]);
-	s32 val2 = read<2>(DA<2>(instr));
+    Operand op = DA<2>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+	s32 val2 = read<2>(op.operand, dpage);
 	PSW &= 0xFFF0;
 	if (val2 > 32767)
 		val2 |= 0xffff0000;
@@ -145,7 +151,9 @@ void KB11::DIV(const u16 instr) {
 void KB11::ASH(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
 	const auto val1 = R[reg];
-	auto val2 = read<2>(DA<2>(instr)) & 077;
+    Operand op = DA<2>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+	auto val2 = read<2>(op.operand, dpage) & 077;
 	PSW &= 0xFFF0;
 	s32 sval = val1;
 	if (val2 & 040) {
@@ -180,7 +188,9 @@ void KB11::ASH(const u16 instr) {
 void KB11::ASHC(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
 	const auto val1 = ((u32)(R[reg]) << 16) | R[reg | 1];
-	auto val2 = read<2>(DA<2>(instr)) & 077;
+    Operand op = DA<2>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+	auto val2 = read<2>(op.operand, dpage) & 077;
 	PSW &= 0xFFF0;
 	u32 msk;
 	s64 sval = (int)val1;
@@ -212,9 +222,10 @@ void KB11::ASHC(const u16 instr) {
 // XOR 064RDD
 void KB11::XOR(const u16 instr) {
     const auto reg = R[(instr >> 6) & 7];
-    const auto da = DA<2>(instr);
-    const auto dst = reg ^ read<2>(da);
-    write<2>(da, dst);
+    Operand op = DA<2>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const auto dst = reg ^ read<2>(op.operand, dpage);
+    write<2>(op.operand, dst, dpage);
     setNZ<2>(dst);
 }
 
@@ -275,21 +286,23 @@ void KB11::FIS(const u16 instr)
 // MTPS
 
 void KB11::MTPS(const u16 instr) {
-    const auto da = DA<1>(instr);
-    auto src = read<1>(da);
+    Operand op = DA<1>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    auto src = read<1>(op.operand, dpage);
     PSW = (PSW & 0177400) | (src & 0357);
 }
 
 // MFPS
 
 void KB11::MFPS(const u16 instr) {
-    const auto da = DA<1>(instr);
+    Operand op = DA<1>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     auto dst = PSW & 0357;
     if (PSW & msb<1>() && ((instr & 030) == 0)) {
         dst |= 0177400;
-        write<2>(da, dst) ;
+        write<2>(op.operand, dst, dpage) ;
     } else{
-        write<1>(da, dst) ;
+        write<1>(op.operand, dst, dpage) ;
     }
     setNZ<1>(PSW & 0377);
 }
@@ -299,23 +312,21 @@ void KB11::JSR(const u16 instr) {
     if (((instr >> 3) & 7) == 0) {
         trap(INTBUS);
     }
-    const auto dst = DA<2>(instr);
+    Operand op = DA<2>(instr) ;
     const auto reg = (instr >> 6) & 7;
     push(R[reg]);
     R[reg] = R[7];
-    R[7] = dst;
+    R[7] = op.operand;
 }
 
 // JMP 0001DD
 void KB11::JMP(const u16 instr) {
     if (((instr >> 3) & 7) == 0) {
         // Registers don't have a virtual address so trap!
-        //printf("JMP called on register\n");
-        //printstate();
         trap(INTBUS);
-        //std::abort();
-    } else
-       R[7] = DA<2>(instr);
+    } else {
+        R[7] = DA<2>(instr).operand ;
+    }
 }
 
 // MARK 0064NN
@@ -336,7 +347,7 @@ void KB11::MFPI(const u16 instr) {
             uval = stackpointer[previousmode()];
         }
     } else {
-        const auto da = DA<2>(instr);
+        const auto da = DA<2>(instr).operand;
         uval = unibus.read16(mmu.decode<false>(da, previousmode()));
     }
     push(uval);
@@ -354,7 +365,7 @@ void KB11::MTPI(const u16 instr) {
             stackpointer[previousmode()] = uval;
         }
     } else {
-        const auto da = DA<2>(instr);
+        const auto da = DA<2>(instr).operand;
         unibus.write16(mmu.decode<true>(da, previousmode()), uval);
     }
     setNZ<2>(uval);
@@ -405,10 +416,11 @@ void KB11::RESET() {
 
 // SWAB 0003DD
 void KB11::SWAB(const u16 instr) {
-    const auto da = DA<2>(instr);
-    auto dst = read<2>(da);
+    Operand op = DA<2>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    auto dst = read<2>(op.operand, dpage);
     dst = (dst << 8) | (dst >> 8);
-    write<2>(da, dst);
+    write<2>(op.operand, dst, dpage);
     PSW &= 0xFFF0;
     if ((dst & 0xff) == 0) {
         PSW |= FLAGZ;
@@ -420,11 +432,13 @@ void KB11::SWAB(const u16 instr) {
 
 // SXT 0067DD
 void KB11::SXT(const u16 instr) {
+    Operand op = DA<2>(instr) ;
+    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     if (N()) {
-        write<2>(DA<2>(instr), 0xffff);
+        write<2>(op.operand, 0xffff, dpage);
         PSW &= ~FLAGZ;
     } else {
-        write<2>(DA<2>(instr), 0);
+        write<2>(op.operand, 0, dpage);
         PSW |= FLAGZ;
     }
     PSW &= ~FLAGV;

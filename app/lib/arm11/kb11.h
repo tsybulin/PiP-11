@@ -132,20 +132,19 @@ class KB11 {
         return val;
     }
 
-    template <auto len> inline u16 DA(const u16 instr) {
-        static_assert(len == 1 || len == 2);
-        if (!(instr & 070)) {
-            rflag++;
-            return (instr & 7);
-        }
-        return fetchOperand<len>(instr).operand;
-    }
-
     typedef struct {
         u16 operand ;
         OperandType operandType ; 
     } Operand ;
     
+    template <auto len> inline Operand DA(const u16 instr) {
+        static_assert(len == 1 || len == 2);
+        if (!(instr & 070)) {
+            rflag++;
+            return {(u16)(instr & 7), OPERAND_INSTRUCTION} ;
+        }
+        return fetchOperand<len>(instr);
+    }
 
     template <auto len> Operand fetchOperand(const u16 instr) {
         const auto mode = (instr >> 3) & 7;
@@ -316,9 +315,10 @@ class KB11 {
     // CMP 02SSDD, CMPB 12SSDD
     template <auto l> void CMP(const u16 instr) {
         const auto src = SS<l>(instr);
-        const auto da = DA<l>(instr);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 
-        const auto dst = read<l>(da);
+        const auto dst = read<l>(op.operand, dpage);
         const auto sval = (src - dst) & max<l>();
         PSW &= 0xFFF0;
         if (sval == 0) {
@@ -370,10 +370,11 @@ class KB11 {
 
     template <auto l> void BIC(const u16 instr) {
         const auto src = SS<l>(instr);
-        const auto da = DA<l>(instr);
-        const auto dst = read<l>(da);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        const auto dst = read<l>(op.operand, dpage);
         auto uval = (max<l>() ^ src) & dst;
-        write<l>(da, uval);
+        write<l>(op.operand, uval, dpage);
         PSW &= 0xFFF1;
         setZ(uval == 0);
         if (uval & msb<l>()) {
@@ -383,29 +384,33 @@ class KB11 {
 
     template <auto l> void BIS(const u16 instr) {
         const auto src = SS<l>(instr);
-        const auto da = DA<l>(instr);
-        const auto dst = read<l>(da);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        const auto dst = read<l>(op.operand, dpage);
         auto uval = src | dst;
         PSW &= 0xFFF1;
         setZ(uval == 0);
         if (uval & msb<l>()) {
             PSW |= FLAGN;
         }
-        write<l>(da, uval);
+        write<l>(op.operand, uval, dpage);
     }
 
     // CLR 0050DD, CLRB 1050DD
     template <auto l> void CLR(const u16 instr) {
         PSW &= 0xFFF0;
         PSW |= FLAGZ;
-        write<l>(DA<l>(instr), 0);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        write<l>(op.operand, 0, dpage);
     }
 
     // COM 0051DD, COMB 1051DD
     template <auto l> void COM(const u16 instr) {
-        const auto da = DA<l>(instr);
-        const auto dst = ~read<l>(da);
-        write<l>(da, dst);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        const auto dst = ~read<l>(op.operand, dpage);
+        write<l>(op.operand, dst, dpage);
         PSW &= 0xFFF0;
         if ((dst & msb<l>())) {
             PSW |= FLAGN;
@@ -418,23 +423,23 @@ class KB11 {
 
     // DEC 0053DD, DECB 1053DD
     template <auto l> void _DEC(const u16 instr) {
-        const auto da = DA<l>(instr);
-        const auto oval = read<l>(da) & max<l>();
-        const auto uval = (read<l>(da) - 1) & max<l>();
-        write<l>(da, uval);
-        //setNZV<l>(uval);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        const auto oval = read<l>(op.operand, dpage) & max<l>();
+        const auto uval = (read<l>(op.operand, dpage) - 1) & max<l>();
+        write<l>(op.operand, uval, dpage);
         setNZ<l>(uval);
         if (oval == msb<l>()) {
             PSW |= FLAGV;
         }
-
     }
 
     // NEG 0054DD, NEGB 1054DD
     template <auto l> void NEG(const u16 instr) {
-        const auto da = DA<l>(instr);
-        const auto dst = (-read<l>(da)) & max<l>();
-        write<l>(da, dst);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        const auto dst = (-read<l>(op.operand, dpage)) & max<l>();
+        write<l>(op.operand, dst, dpage);
         PSW &= 0xFFF0;
         if (dst & msb<l>()) {
             PSW |= FLAGN;
@@ -450,10 +455,11 @@ class KB11 {
     }
 
     template <auto l> void _ADC(const u16 instr) {
-        const auto da = DA<l>(instr);
-        auto uval = read<l>(da);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        auto uval = read<l>(op.operand, dpage);
         if (PSW & FLAGC) {
-            write<l>(da, (uval + 1) & max<l>());
+            write<l>(op.operand, (uval + 1) & max<l>(), dpage);
             PSW &= 0xFFF0;
             if ((uval + 1) & msb<l>()) {
                 PSW |= FLAGN;
@@ -479,15 +485,16 @@ class KB11 {
 
 
     template <auto l> void SBC(const u16 instr) {
-        const auto da = DA<l>(instr);
-        auto sval = read<l>(da);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        auto sval = read<l>(op.operand, dpage);
         auto qval = sval;
         PSW &= ~(FLAGN | FLAGV | FLAGZ);
         if (PSW & FLAGC) {
             if (sval)
                 PSW ^= FLAGC;
             sval = (sval - 1) & max<l>();
-            write<l>(da, sval);
+            write<l>(op.operand, sval, dpage);
         }
         setZ(sval == 0);
         if (qval == msb<l>())
@@ -498,13 +505,14 @@ class KB11 {
     }
 
     template <auto l> void ROR(const u16 instr) {
-        const auto da = DA<l>(instr);
-        const auto dst = read<l>(da);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        const auto dst = read<l>(op.operand, dpage);
         auto result = dst >> 1;
         if (PSW & FLAGC) {
             result |= msb<l>();
         }
-        write<l>(da, result);
+        write<l>(op.operand, result, dpage);
         PSW &= 0xFFF0;
         if (dst & 1) {
             // shift lsb into carry
@@ -522,8 +530,9 @@ class KB11 {
     }
 
     template <auto l> void ROL(const u16 instr) {
-        const auto da = DA<l>(instr);
-        u32 sval = read<l>(da) << 1;
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        u32 sval = read<l>(op.operand, dpage) << 1;
         if (PSW & FLAGC) {
             sval |= 1;
         }
@@ -539,12 +548,13 @@ class KB11 {
             PSW |= FLAGV;
         }
         sval &= max<l>();
-        write<l>(da, sval);
+        write<l>(op.operand, sval, dpage);
     }
 
     template <auto l> void ASR(const u16 instr) {
-        const auto da = DA<l>(instr);
-        auto uval = read<l>(da);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        auto uval = read<l>(op.operand, dpage);
         PSW &= 0xFFF0;
         if (uval & 1) {
             PSW |= FLAGC;
@@ -557,13 +567,14 @@ class KB11 {
             PSW |= FLAGV;
         }
         setZ(uval == 0);
-        write<l>(da, uval);
+        write<l>(op.operand, uval, dpage);
     }
 
     template <auto l> void ASL(const u16 instr) {
-        const auto da = DA<l>(instr);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         // TODO(dfc) doesn't need to be an sval
-        u32 sval = read<l>(da);
+        u32 sval = read<l>(op.operand, dpage);
         PSW &= 0xFFF0;
         if (sval & msb<l>()) {
             PSW |= FLAGC;
@@ -576,28 +587,33 @@ class KB11 {
         }
         sval = (sval << 1) & max<l>();
         setZ(sval == 0);
-        write<l>(da, sval);
+        write<l>(op.operand, sval, dpage);
     }
 
     // INC 0052DD, INCB 1052DD
     template <auto l> void INC(const u16 instr) {
-        const auto da = DA<l>(instr);
-        const auto dst = read<l>(da) + 1;
-        write<l>(da, dst);
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        const auto dst = read<l>(op.operand, dpage) + 1;
+        write<l>(op.operand, dst, dpage);
         setNZV<l>(dst);
     }
 
     // BIT 03SSDD, BITB 13SSDD
     template <auto l> void _BIT(const u16 instr) {
         const auto src = SS<l>(instr);
-        const auto dst = read<l>(DA<l>(instr));
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        const auto dst = read<l>(op.operand, dpage);
         const auto result = src & dst;
         setNZ<l>(result);
     }
 
     // TST 0057DD, TSTB 1057DD
     template <auto l> void TST(const u16 instr) {
-        const auto dst = read<l>(DA<l>(instr));
+        Operand op = DA<l>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        const auto dst = read<l>(op.operand, dpage);
         PSW &= 0xFFF0;
         if ((dst & max<l>()) == 0) {
             PSW |= FLAGZ;
@@ -619,7 +635,9 @@ class KB11 {
         setNZ<len>(src);
 
         // const bool dpage = denabled() && dmode(instr) ;
-        write<len>(DA<len>(instr), src);
+        Operand op = DA<len>(instr) ;
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+        write<len>(op.operand, src, dpage);
     }
 
     void ADD(const u16 instr);
