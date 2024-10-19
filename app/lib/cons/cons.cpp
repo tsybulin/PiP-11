@@ -121,6 +121,7 @@ void gprintf(const char *__restrict format, ...) {
 
     Console::get()->vtFillRegion(30, TEXTMODE_ROWS, TEXTMODE_COLS - 1, TEXTMODE_ROWS, ' ', WHITE_COLOR, BLACK_COLOR) ;
     Console::get()->write(tmp, 30, TEXTMODE_ROWS, RED_COLOR) ;
+    // CLogger::Get()->Write("pip", LogError, tmp) ;
 }
 
 void iprintf(const char *__restrict format, ...) {

@@ -60,7 +60,9 @@ class KT11 {
             pages[mode][i].pdr |= 1 << 6;
         }
         const auto aa = ((pages[mode][i].addr() + block) << 6) + disp;
-        // printf("decode: slow %06o -> %06o\n", a, aa);
+        // if (d) {
+        //     gprintf("mmu:decode: d %d %06o -> %06o", i, a, aa);
+        // }
         return aa;
     }
 
