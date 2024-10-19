@@ -60,11 +60,9 @@ void KB11::write16(const u16 va, const u16 v, bool d) {
 void KB11::ADD(const u16 instr) {
     const auto src = SS<2>(instr);
     const auto da = DA<2>(instr);
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-    const auto dst = read<2>(da, dpage);
+    const auto dst = read<2>(da);
     const auto sum = src + dst;
-    write<2>(da, sum, dpage);
+    write<2>(da, sum);
     PSW &= 0xFFF0;
     setNZ<2>(sum);
     if (((~src ^ dst) & (src ^ sum)) & 0x8000) {
@@ -79,9 +77,7 @@ void KB11::ADD(const u16 instr) {
 void KB11::SUB(const u16 instr) {
     const auto val1 = SS<2>(instr);
     const auto da = DA<2>(instr);
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-    const auto val2 = read<2>(da, dpage);
+    const auto val2 = read<2>(da);
     const auto uval = (val2 - val1) & 0xFFFF;
     PSW &= 0xFFF0;
     write<2>(da, uval);
@@ -102,10 +98,7 @@ void KB11::MUL(const u16 instr) {
 		val1 = -((0xFFFF ^ val1) + 1);
 	}
 
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-
-	s32 val2 = read<2>(DA<2>(instr), dpage);
+	s32 val2 = read<2>(DA<2>(instr));
 	if (val2 & 0x8000) {
 		val2 = -((0xFFFF ^ val2) + 1);
 	}
@@ -127,9 +120,7 @@ void KB11::MUL(const u16 instr) {
 void KB11::DIV(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
 	const s32 val1 = (R[reg] << 16) | (R[reg | 1]);
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-	s32 val2 = read<2>(DA<2>(instr), dpage);
+	s32 val2 = read<2>(DA<2>(instr));
 	PSW &= 0xFFF0;
 	if (val2 > 32767)
 		val2 |= 0xffff0000;
@@ -154,9 +145,7 @@ void KB11::DIV(const u16 instr) {
 void KB11::ASH(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
 	const auto val1 = R[reg];
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-	auto val2 = read<2>(DA<2>(instr), dpage) & 077;
+	auto val2 = read<2>(DA<2>(instr)) & 077;
 	PSW &= 0xFFF0;
 	s32 sval = val1;
 	if (val2 & 040) {
@@ -191,9 +180,7 @@ void KB11::ASH(const u16 instr) {
 void KB11::ASHC(const u16 instr) {
 	const auto reg = (instr >> 6) & 7;
 	const auto val1 = ((u32)(R[reg]) << 16) | R[reg | 1];
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-	auto val2 = read<2>(DA<2>(instr), dpage) & 077;
+	auto val2 = read<2>(DA<2>(instr)) & 077;
 	PSW &= 0xFFF0;
 	u32 msk;
 	s64 sval = (int)val1;
@@ -226,10 +213,8 @@ void KB11::ASHC(const u16 instr) {
 void KB11::XOR(const u16 instr) {
     const auto reg = R[(instr >> 6) & 7];
     const auto da = DA<2>(instr);
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-    const auto dst = reg ^ read<2>(da, dpage);
-    write<2>(da, dst, dpage);
+    const auto dst = reg ^ read<2>(da);
+    write<2>(da, dst);
     setNZ<2>(dst);
 }
 
@@ -254,11 +239,9 @@ void KB11::FIS(const u16 instr)
     u16 adr = R[instr & 7];      // Base address from specfied reg
     float op1, op2;
 
-    const bool dpage = denabled() ;
-
-    bfr.xint = read<2>(adr + 6, dpage) | (read<2>(adr + 4, dpage) << 16);
+    bfr.xint = read<2>(adr + 6) | (read<2>(adr + 4) << 16);
     op1 = bfr.xflt;
-    bfr.xint = read<2>(adr + 2, dpage) | (read<2>(adr, dpage) << 16);
+    bfr.xint = read<2>(adr + 2) | (read<2>(adr) << 16);
     op2 = bfr.xflt;
     PSW &= ~(FLAGN | FLAGV | FLAGZ | FLAGC);
     switch (instr & 070) {
@@ -284,8 +267,8 @@ void KB11::FIS(const u16 instr)
         PSW |= FLAGZ;
     if (bfr.xflt < 0.0)
         PSW |= FLAGN;
-    write<2>(adr + 4, bfr.xint >> 16, dpage);
-    write<2>(adr + 6, bfr.xint, dpage);
+    write<2>(adr + 4, bfr.xint >> 16);
+    write<2>(adr + 6, bfr.xint);
 }
 
 
@@ -293,9 +276,7 @@ void KB11::FIS(const u16 instr)
 
 void KB11::MTPS(const u16 instr) {
     const auto da = DA<1>(instr);
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-    auto src = read<1>(da, dpage);
+    auto src = read<1>(da);
     PSW = (PSW & 0177400) | (src & 0357);
 }
 
@@ -303,14 +284,12 @@ void KB11::MTPS(const u16 instr) {
 
 void KB11::MFPS(const u16 instr) {
     const auto da = DA<1>(instr);
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
     auto dst = PSW & 0357;
     if (PSW & msb<1>() && ((instr & 030) == 0)) {
         dst |= 0177400;
-        write<2>(da, dst, dpage) ;
+        write<2>(da, dst) ;
     } else{
-        write<1>(da, dst, dpage) ;
+        write<1>(da, dst) ;
     }
     setNZ<1>(PSW & 0377);
 }
@@ -426,12 +405,10 @@ void KB11::RESET() {
 
 // SWAB 0003DD
 void KB11::SWAB(const u16 instr) {
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
     const auto da = DA<2>(instr);
-    auto dst = read<2>(da, dpage);
+    auto dst = read<2>(da);
     dst = (dst << 8) | (dst >> 8);
-    write<2>(da, dst, dpage);
+    write<2>(da, dst);
     PSW &= 0xFFF0;
     if ((dst & 0xff) == 0) {
         PSW |= FLAGZ;
@@ -443,13 +420,11 @@ void KB11::SWAB(const u16 instr) {
 
 // SXT 0067DD
 void KB11::SXT(const u16 instr) {
-    const auto mode = (instr >> 3) & 7;
-    const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
     if (N()) {
-        write<2>(DA<2>(instr), 0xffff, dpage);
+        write<2>(DA<2>(instr), 0xffff);
         PSW &= ~FLAGZ;
     } else {
-        write<2>(DA<2>(instr), 0, dpage);
+        write<2>(DA<2>(instr), 0);
         PSW |= FLAGZ;
     }
     PSW &= ~FLAGV;

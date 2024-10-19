@@ -14,6 +14,11 @@ enum CPUStatus : u8 {
     CPU_STATUS_STEP
 } ;
 
+enum OperandType : u8 {
+    OPERAND_INSTRUCTION,
+    OPERAND_DATA
+} ;
+
 class API ;
 
 class KB11 {
@@ -133,70 +138,94 @@ class KB11 {
             rflag++;
             return (instr & 7);
         }
-        return fetchOperand<len>(instr);
+        return fetchOperand<len>(instr).operand;
     }
 
-    template <auto len> u16 fetchOperand(const u16 instr) {
+    typedef struct {
+        u16 operand ;
+        OperandType operandType ; 
+    } Operand ;
+    
+
+    template <auto len> Operand fetchOperand(const u16 instr) {
         const auto mode = (instr >> 3) & 7;
         const auto reg = instr & 7;
 
-        u16 addr ;
+        Operand result = {0, OPERAND_DATA} ;
+
         const bool den = denabled() ;
 
         switch (mode) {
             case 0: // Mode 0: Registers don't have a virtual address so trap!
                 trap(INTBUS);
             case 1: // Mode 1: (R)
-                return R[reg];
+                result.operand = R[reg] ;
+                return result ;
             case 2: // Mode 2: (R)+ including immediate operand #x
-                addr = R[reg];
+                result.operand = R[reg];
                 R[reg] += (reg >= 6) ? 2 : len;
-                return addr;
+                result.operandType = reg < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
+                return result ;
             case 3: // Mode 3: @(R)+
-                addr = R[reg];
+                result.operand = R[reg];
                 R[reg] += 2;
-                return read16(addr, den);
+                result.operand = read16(result.operand, den);
+                result.operandType = reg < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
+                return result ;
             case 4: // Mode 4: -(R)
                 R[reg] -= (reg >= 6) ? 2 : len;
-                addr = R[reg];
-                return addr;
+                result.operand = R[reg];
+                return result;
             case 5: // Mode 5: @-(R)
                 R[reg] -= 2;
-                addr = R[reg];
-                return read16(addr, den);
+                result.operand = R[reg];
+                result.operand = read16(result.operand, den);
+                return result;
             case 6: // Mode 6: d(R)
-                addr = fetch16();
-                addr = addr + R[reg];
-                return addr;
+                result.operand = fetch16();
+                result.operand = result.operand + R[reg];
+                return result;
             default: // 7 Mode 7: @d(R)
-                addr = fetch16();
-                addr = addr + R[reg];
-                return read16(addr, den);
+                result.operand = fetch16();
+                result.operand = result.operand + R[reg];
+                result.operand = read16(result.operand, den);
+                return result ;
         }
     }
+
+    // OOMR
+    // constexpr inline bool dmode(const u16 instr) {
+    //     const u8 r = instr & 7 ;
+    //     const auto mode = (instr >> 3) & 7;
+    //     if (mode == 1 || mode == 6 || mode == 7) {
+    //         return true ;
+    //     }
+    //     if ((mode == 2 || mode == 3 || mode == 4 || mode == 5) && r < 7) {
+    //         return true ;
+    //     }
+
+    //     return false ;
+    // }
 
     template <auto len> constexpr u16 SS(const u16 instr) {
         static_assert(len == 1 || len == 2);
 
-        const u8 n = (instr >> 6) & 7 ;
-
         // If register mode just get register value
         if (!(instr & 07000)) {
-            return R[n] & max<len>();
+            return R[(instr >> 6) & 7] & max<len>();
         }
 
-        const auto mode = (instr >> 9) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && n == 7) ;
-
-        const auto addr = fetchOperand<len>(instr >> 6);
+        const Operand op = fetchOperand<len>(instr >> 6);
+        const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         if constexpr (len == 2) {
-            return read16(addr, dpage);
+            return read16(op.operand, dpage);
         }
 
-        if (addr & 1) {
-            return read16(addr & ~1, dpage) >> 8;
+        if (op.operand & 1) {
+            return read16(op.operand & ~1, dpage) >> 010;
         }
-        return read16(addr & ~1, dpage) & 0xFF;
+
+        return read16(op.operand & ~1, dpage) & 0377;
     }
 
     constexpr inline void branch(const u16 instr) {
@@ -289,10 +318,7 @@ class KB11 {
         const auto src = SS<l>(instr);
         const auto da = DA<l>(instr);
 
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-
-        const auto dst = read<l>(da, dpage);
+        const auto dst = read<l>(da);
         const auto sval = (src - dst) & max<l>();
         PSW &= 0xFFF0;
         if (sval == 0) {
@@ -345,11 +371,9 @@ class KB11 {
     template <auto l> void BIC(const u16 instr) {
         const auto src = SS<l>(instr);
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        const auto dst = read<l>(da, dpage);
+        const auto dst = read<l>(da);
         auto uval = (max<l>() ^ src) & dst;
-        write<l>(da, uval, dpage);
+        write<l>(da, uval);
         PSW &= 0xFFF1;
         setZ(uval == 0);
         if (uval & msb<l>()) {
@@ -360,34 +384,28 @@ class KB11 {
     template <auto l> void BIS(const u16 instr) {
         const auto src = SS<l>(instr);
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        const auto dst = read<l>(da, dpage);
+        const auto dst = read<l>(da);
         auto uval = src | dst;
         PSW &= 0xFFF1;
         setZ(uval == 0);
         if (uval & msb<l>()) {
             PSW |= FLAGN;
         }
-        write<l>(da, uval, dpage);
+        write<l>(da, uval);
     }
 
     // CLR 0050DD, CLRB 1050DD
     template <auto l> void CLR(const u16 instr) {
         PSW &= 0xFFF0;
         PSW |= FLAGZ;
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        write<l>(DA<l>(instr), 0, dpage);
+        write<l>(DA<l>(instr), 0);
     }
 
     // COM 0051DD, COMB 1051DD
     template <auto l> void COM(const u16 instr) {
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        const auto dst = ~read<l>(da, dpage);
-        write<l>(da, dst, dpage);
+        const auto dst = ~read<l>(da);
+        write<l>(da, dst);
         PSW &= 0xFFF0;
         if ((dst & msb<l>())) {
             PSW |= FLAGN;
@@ -401,11 +419,9 @@ class KB11 {
     // DEC 0053DD, DECB 1053DD
     template <auto l> void _DEC(const u16 instr) {
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        const auto oval = read<l>(da, dpage) & max<l>();
-        const auto uval = (read<l>(da, dpage) - 1) & max<l>();
-        write<l>(da, uval, dpage);
+        const auto oval = read<l>(da) & max<l>();
+        const auto uval = (read<l>(da) - 1) & max<l>();
+        write<l>(da, uval);
         //setNZV<l>(uval);
         setNZ<l>(uval);
         if (oval == msb<l>()) {
@@ -417,10 +433,8 @@ class KB11 {
     // NEG 0054DD, NEGB 1054DD
     template <auto l> void NEG(const u16 instr) {
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        const auto dst = (-read<l>(da, dpage)) & max<l>();
-        write<l>(da, dst, dpage);
+        const auto dst = (-read<l>(da)) & max<l>();
+        write<l>(da, dst);
         PSW &= 0xFFF0;
         if (dst & msb<l>()) {
             PSW |= FLAGN;
@@ -437,11 +451,9 @@ class KB11 {
 
     template <auto l> void _ADC(const u16 instr) {
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        auto uval = read<l>(da, dpage);
+        auto uval = read<l>(da);
         if (PSW & FLAGC) {
-            write<l>(da, (uval + 1) & max<l>(), dpage);
+            write<l>(da, (uval + 1) & max<l>());
             PSW &= 0xFFF0;
             if ((uval + 1) & msb<l>()) {
                 PSW |= FLAGN;
@@ -468,16 +480,14 @@ class KB11 {
 
     template <auto l> void SBC(const u16 instr) {
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        auto sval = read<l>(da, dpage);
+        auto sval = read<l>(da);
         auto qval = sval;
         PSW &= ~(FLAGN | FLAGV | FLAGZ);
         if (PSW & FLAGC) {
             if (sval)
                 PSW ^= FLAGC;
             sval = (sval - 1) & max<l>();
-            write<l>(da, sval, dpage);
+            write<l>(da, sval);
         }
         setZ(sval == 0);
         if (qval == msb<l>())
@@ -489,14 +499,12 @@ class KB11 {
 
     template <auto l> void ROR(const u16 instr) {
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        const auto dst = read<l>(da, dpage);
+        const auto dst = read<l>(da);
         auto result = dst >> 1;
         if (PSW & FLAGC) {
             result |= msb<l>();
         }
-        write<l>(da, result, dpage);
+        write<l>(da, result);
         PSW &= 0xFFF0;
         if (dst & 1) {
             // shift lsb into carry
@@ -515,9 +523,7 @@ class KB11 {
 
     template <auto l> void ROL(const u16 instr) {
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        u32 sval = read<l>(da, dpage) << 1;
+        u32 sval = read<l>(da) << 1;
         if (PSW & FLAGC) {
             sval |= 1;
         }
@@ -533,14 +539,12 @@ class KB11 {
             PSW |= FLAGV;
         }
         sval &= max<l>();
-        write<l>(da, sval, dpage);
+        write<l>(da, sval);
     }
 
     template <auto l> void ASR(const u16 instr) {
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        auto uval = read<l>(da, dpage);
+        auto uval = read<l>(da);
         PSW &= 0xFFF0;
         if (uval & 1) {
             PSW |= FLAGC;
@@ -553,15 +557,13 @@ class KB11 {
             PSW |= FLAGV;
         }
         setZ(uval == 0);
-        write<l>(da, uval, dpage);
+        write<l>(da, uval);
     }
 
     template <auto l> void ASL(const u16 instr) {
         const auto da = DA<l>(instr);
         // TODO(dfc) doesn't need to be an sval
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        u32 sval = read<l>(da, dpage);
+        u32 sval = read<l>(da);
         PSW &= 0xFFF0;
         if (sval & msb<l>()) {
             PSW |= FLAGC;
@@ -574,34 +576,28 @@ class KB11 {
         }
         sval = (sval << 1) & max<l>();
         setZ(sval == 0);
-        write<l>(da, sval, dpage);
+        write<l>(da, sval);
     }
 
     // INC 0052DD, INCB 1052DD
     template <auto l> void INC(const u16 instr) {
         const auto da = DA<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        const auto dst = read<l>(da, dpage) + 1;
-        write<l>(da, dst, dpage);
+        const auto dst = read<l>(da) + 1;
+        write<l>(da, dst);
         setNZV<l>(dst);
     }
 
     // BIT 03SSDD, BITB 13SSDD
     template <auto l> void _BIT(const u16 instr) {
         const auto src = SS<l>(instr);
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        const auto dst = read<l>(DA<l>(instr), dpage);
+        const auto dst = read<l>(DA<l>(instr));
         const auto result = src & dst;
         setNZ<l>(result);
     }
 
     // TST 0057DD, TSTB 1057DD
     template <auto l> void TST(const u16 instr) {
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        const auto dst = read<l>(DA<l>(instr), dpage);
+        const auto dst = read<l>(DA<l>(instr));
         PSW &= 0xFFF0;
         if ((dst & max<l>()) == 0) {
             PSW |= FLAGZ;
@@ -622,9 +618,8 @@ class KB11 {
         }
         setNZ<len>(src);
 
-        const auto mode = (instr >> 3) & 7;
-        const bool dpage = denabled() && mode > 0 && !(mode == 2 && (instr & 7) == 7) ;
-        write<len>(DA<len>(instr), src, dpage);
+        // const bool dpage = denabled() && dmode(instr) ;
+        write<len>(DA<len>(instr), src);
     }
 
     void ADD(const u16 instr);
