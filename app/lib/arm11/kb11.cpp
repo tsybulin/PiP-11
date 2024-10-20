@@ -38,9 +38,34 @@ void KB11::reset(u16 start) {
 void KB11::write16(const u16 va, const u16 v, bool d) {
     const auto a = mmu.decode<true>(va, currentmode(), d);
     switch (a) {
-        case 0777772:
-            pir_str = v ;
-            pir_cnt = v ;
+        case 0777772: {
+                pir_str = v & 0177000 ;
+                u8 pl = 0 ;
+                if (pir_str & 01000) {
+                    pl = 042 ;
+                }
+                if (pir_str & 02000) {
+                    pl = 0104 ;
+                }
+                if (pir_str & 03000) {
+                    pl = 0146 ;
+                }
+                if (pir_str & 04000) {
+                    pl = 0210 ;
+                }
+                if (pir_str & 05000) {
+                    pl = 0252 ;
+                }
+                if (pir_str & 06000) {
+                    pl = 0314 ;
+                }
+                if (pir_str & 07000) {
+                    pl = 0356 ;
+                }
+                pir_str |= pl ;
+                pir_cnt = pl ;
+            }
+
             break ;
         case 0777776:
             writePSW(v);
@@ -899,12 +924,13 @@ void KB11::ptstate() {
 
 void KB11::pirq() {
     if (pir_str == 0) {
-        pir_cnt = 0 ;
         return ;
     }
 
     if (--pir_cnt == 0) {
-        pir_cnt = pir_str ;
-        interrupt(0240, 2) ;
+        pir_cnt = pir_str & 0377 ;
+
+        u8 pri = (pir_str & 0177000) >> 9 ;
+        interrupt(INTPIR, pri) ;
     }
 }

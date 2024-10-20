@@ -104,8 +104,8 @@ class KB11 {
     u16 stackpointer[4]; // Alternate R6 (kernel, super, illegal, user)
 
     u16 pir_str = 0 ;
-    u16 pir_cnt = 0 ;
-
+    u8 pir_cnt = 0 ;
+    
     inline bool N() { return PSW & FLAGN; }
     inline bool Z() { return PSW & FLAGZ; }
     inline bool V() { return PSW & FLAGV; }
