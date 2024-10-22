@@ -6,7 +6,7 @@
 class KT11 {
 
   public:
-    u16 SR[4]; // MM status registers
+    u16 SR[4] = {0, 0, 0, 0}; // MM status registers
 
     template <bool wr>
     inline u32 decode(const u16 a, const u16 mode, bool d = false) {
@@ -53,7 +53,7 @@ class KT11 {
             //       "length "
             //       "%03o\r\n",
             //       a, block, pages[mode][i].len());
-            SR[0] |= 0200;
+            // SR[0] |= 0200;
             trap(INTFAULT) ;
         }
         if (wr) {

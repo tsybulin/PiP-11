@@ -3,6 +3,7 @@
 #include <circle/setjmp.h>
 
 #include "bootmon.h"
+#include "bootstrap.h"
 
 #include <cons/cons.h>
 
@@ -24,6 +25,10 @@ void disasm(u32 ia);
 void fp11(int IR);
 
 void KB11::reset(u16 start) {
+    for (int i = 0; i < ABSLOADER_LENGTH; i++) {
+        unibus.write16(ABSLOADER_BASE + (i * 2), absloader[i]);
+    }
+
     for (int i = 0; i < BOOTMON_LENGTH; i++) {
         unibus.write16(BOOTMON_BASE + (i * 2), bootmon[i]);
     }
@@ -31,7 +36,7 @@ void KB11::reset(u16 start) {
     R[7] = start;
     stacklimit = 0xff;
     switchregister = 0;
-    unibus.reset();
+    unibus.reset(false);
     wtstate = false;
 }
 
@@ -489,7 +494,7 @@ void KB11::step() {
                                     if (currentmode()) {
                                         trap(INTINVAL);
                                     }
-                                    Console::get()->printf("HALT:\r\n");
+                                    Console::get()->printf(" HALT:\r\n");
                                     printstate();
                                     cpuStatus = CPU_STATUS_HALT ;
                                 case 1: // WAIT 000001
@@ -905,9 +910,8 @@ static const char *modnames[4] = {
 } ;
 
 void KB11::ptstate() {
-    Console::get()->printf("    R0 %06o R1 %06o R2 %06o R3 %06o\r\n", u16(R[0]), u16(R[1]), u16(R[2]), u16(R[3]));
-    Console::get()->printf("    R4 %06o R5 %06o R6 %06o R7 %06o\r\n",
-        u16(R[4]), u16(R[5]), u16(R[6]), u16(R[7]));
+    Console::get()->printf("    R0 %06o R1 %06o R2 %06o R3 %06o\r\n", R[0], R[1], R[2], R[3]);
+    Console::get()->printf("    R4 %06o R5 %06o R6 %06o\r\n", R[4], R[5], R[6]);
     
     Console::get()->printf("    PSW [%s%s%s%s%s",
         modnames[currentmode()],
@@ -915,9 +919,9 @@ void KB11::ptstate() {
         Z() ? "Z" : "-",
         V() ? "V" : "-",
         C() ? "C" : "-");
-    Console::get()->printf("]\r\ninstr %06o: %06o     ", PC, read16(PC));
+    Console::get()->printf("]\r\ninstr %06o: %06o     ", R[7], read16(R[7]));
 
-    disasm(PC);
+    disasm(R[7]);
 
     Console::get()->printf("\r\n    PS:%06o\r\n", PSW);
 }

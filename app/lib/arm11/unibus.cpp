@@ -136,13 +136,16 @@ u16 UNIBUS::read16(const u32 a) {
     return 0;
 }
 
-void UNIBUS::reset() {
+void UNIBUS::reset(bool i2c) {
     cons.clearterminal();
     dl11.clearterminal();
     rk11.reset();
     rl11.reset();
     kw11.write16(KW11_CSR, 0x00); // disable line clock INTR
-    lp11.reset();
-    ptr_ptp.reset() ;
+    if (i2c) {
+        ptr_ptp.reset() ;
+        lp11.reset();
+    }
     cpu.mmu.SR[0]=0;
+    cpu.mmu.SR[3]=0;
 }

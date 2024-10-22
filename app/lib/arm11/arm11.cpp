@@ -47,45 +47,6 @@ int f_xgetc(FIL *fl)
     return -1;
 }
 
-int sim_load(FIL *bld)
-{
-    int c[6], d;
-    u32 i, cnt, csum;
-    u32 org;
-
-
-    do {                                                    /* block loop */
-        csum = 0;                                           /* init checksum */
-        for (i = 0; i < 6; ) {                              /* 6 char header */
-            if ((c[i] = f_xgetc(bld))==-1)
-                return 1;
-            if ((i != 0) || (c[i] == 1))                    /* 1st must be 1 */
-                csum = csum + c[i++];                       /* add into csum */
-        }
-        cnt = (c[3] << 8) | c[2];                           /* count */
-        org = (c[5] << 8) | c[4];                           /* origin */
-        if (cnt < 6)                                        /* invalid? */
-            return 1;
-        if (cnt == 6) {                                     /* end block? */
-            return 0;
-        }
-        for (i = 6; i < cnt; i++) {                         /* exclude hdr */
-            if ((d = f_xgetc(bld))==-1)                /* data char */
-                return 1;
-            csum = csum + d;                                /* add into csum */
-            if (org & 1)
-                d = (d << 8) | cpu.unibus.core[org >> 1];
-            cpu.unibus.core[org>>1] = d;
-            org = (org + 1) & 0177777;                      /* inc origin */
-        }
-        if ((d = f_xgetc(bld))==-1)                    /* get csum */
-            return 1;
-        csum = csum + d;                                    /* add in */
-    } while ((csum & 0377) == 0);                       /* result mbz */
-    return 1;
-}
-
-
 void setup(const char *rkfile, const char *rlfile) {
 	if (cpu.unibus.rk11.rk05.obj.lockid) {
 		return ;
@@ -113,8 +74,6 @@ void setup(const char *rkfile, const char *rlfile) {
 jmp_buf trapbuf;
 
 void trap(u16 vec) { longjmp(trapbuf, vec); }
-
-// static u32 cycles = 0 ;
 
 void loop() {
     auto vec = setjmp(trapbuf);
@@ -164,7 +123,7 @@ void loop() {
 }
 
 TShutdownMode startup(const char *rkfile, const char *rlfile) {
-    setup(rkfile,rlfile);
+    setup(rkfile, rlfile);
     
     while (!interrupted) {
         loop();

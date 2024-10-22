@@ -25,6 +25,6 @@ class UNIBUS {
     void write16(u32 a, u16 v);
     u16 read16(u32 a);
 
-    void reset();
+    void reset(bool i2c = true);
 
 } ;
