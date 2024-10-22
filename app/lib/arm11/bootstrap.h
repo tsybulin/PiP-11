@@ -17,19 +17,19 @@
 */
 
 
-// #define BOOTSTRAP_BASE   0157744
-// #define BOOTSTRAP_LENGTH 14
+#define BOOTSTRAP_BASE   0157744
+#define BOOTSTRAP_LENGTH 14
 
-// static const u16 bootstrap[] = {
-//     0016701, 0000026,
-//     0012702, 0000352,
-//     0005211,
-//     0105711,
-//     0100376,
-//     0116162, 0000002, 0157400,
-//     0005267, 0177756,
-//     0000765, 0177550
-// } ;
+static const u16 bootstrap[] = {
+    0016701, 0000026,
+    0012702, 0000352,
+    0005211,
+    0105711,
+    0100376,
+    0116162, 0000002, 0157400,
+    0005267, 0177756,
+    0000765, 0177550
+} ;
 
 #define ABSLOADER_BASE 0157500
 #define ABSLOADER_LENGTH 88

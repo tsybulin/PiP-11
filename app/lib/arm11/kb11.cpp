@@ -25,6 +25,10 @@ void disasm(u32 ia);
 void fp11(int IR);
 
 void KB11::reset(u16 start) {
+    for (int i = 0; i < BOOTSTRAP_LENGTH; i++) {
+        unibus.write16(BOOTSTRAP_BASE + (i * 2), bootstrap[i]);
+    }
+
     for (int i = 0; i < ABSLOADER_LENGTH; i++) {
         unibus.write16(ABSLOADER_BASE + (i * 2), absloader[i]);
     }
