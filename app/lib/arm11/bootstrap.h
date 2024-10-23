@@ -17,9 +17,6 @@
 */
 
 
-#define BOOTSTRAP_BASE   0157744
-#define BOOTSTRAP_LENGTH 14
-
 static const u16 bootstrap[] = {
     0016701, 0000026,
     0012702, 0000352,
@@ -30,9 +27,6 @@ static const u16 bootstrap[] = {
     0005267, 0177756,
     0000765, 0177550
 } ;
-
-#define ABSLOADER_BASE 0157500
-#define ABSLOADER_LENGTH 88
 
 static const u16 absloader[] = {
     0010706, 0024646, 0010705, 0062705, 0000112,

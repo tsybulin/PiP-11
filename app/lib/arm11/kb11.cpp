@@ -4,7 +4,7 @@
 
 #include "bootmon.h"
 #include "bootstrap.h"
-
+#include "boot_defs.h"
 #include <cons/cons.h>
 
 /*

@@ -28,7 +28,7 @@ static configuration_t configurations[5] = {
 } ;
 
 extern queue_t keyboard_queue ;
-TShutdownMode startup(const char *rkfile, const char *rlfile) ;
+TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon) ;
 CSerialDevice *pSerial ;
 CI2CMaster *pI2cMaster ;
 
@@ -318,7 +318,7 @@ TShutdownMode CKernel::Run (void) {
 
 	core3active = true ;
 
-	TShutdownMode mode = startup(rk, rl) ;
+	TShutdownMode mode = startup(rk, rl, ci > 0) ;
 
 	f_unmount(DRIVE) ;
 	

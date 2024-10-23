@@ -7,6 +7,8 @@
 #include <circle/setjmp.h>
 #include <circle/timer.h>
 
+#include "boot_defs.h"
+
 KB11 cpu;
 int kbdelay = 0;
 int clkdelay = 0;
@@ -47,7 +49,7 @@ int f_xgetc(FIL *fl)
     return -1;
 }
 
-void setup(const char *rkfile, const char *rlfile) {
+void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
 	if (cpu.unibus.rk11.rk05.obj.lockid) {
 		return ;
     }
@@ -67,7 +69,7 @@ void setup(const char *rkfile, const char *rlfile) {
     clkdiv = (u64)1000000 / (u64)60;
     systime = CTimer::GetClockTicks64() ;
 	
-    cpu.reset(0140000);
+    cpu.reset(bootmon ? BOOTMON_BASE : BOOTRK_BASE);
     cpu.cpuStatus = CPU_STATUS_ENABLE ;
 }
 
@@ -122,8 +124,8 @@ void loop() {
     }
 }
 
-TShutdownMode startup(const char *rkfile, const char *rlfile) {
-    setup(rkfile, rlfile);
+TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon) {
+    setup(rkfile, rlfile, bootmon);
     
     while (!interrupted) {
         loop();
