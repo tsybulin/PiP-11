@@ -16,6 +16,7 @@ LIBS	= $(CIRCLEHOME)/lib/libcircle.a \
           $(CIRCLEHOME)/lib/net/libnet.a \
           $(CIRCLEHOME)/app/lib/util/libutil.a \
           $(CIRCLEHOME)/app/lib/cons/libcons.a \
+          $(CIRCLEHOME)/app/lib/odt/libodt.a \
           $(CIRCLEHOME)/app/lib/arm11/libarm11.a
 
 

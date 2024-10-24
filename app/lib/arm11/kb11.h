@@ -20,9 +20,11 @@ enum OperandType : u8 {
 } ;
 
 class API ;
+class ODT ;
 
 class KB11 {
     friend API ;
+    friend ODT ;
   public:
     void step();
     void reset(u16 start);

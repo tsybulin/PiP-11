@@ -498,8 +498,8 @@ void KB11::step() {
                                     if (currentmode()) {
                                         trap(INTINVAL);
                                     }
-                                    Console::get()->printf(" HALT:\r\n");
-                                    printstate();
+                                    // Console::get()->printf(" HALT:\r\n");
+                                    // printstate();
                                     cpuStatus = CPU_STATUS_HALT ;
                                 case 1: // WAIT 000001
                                     WAIT();

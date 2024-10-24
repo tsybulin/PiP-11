@@ -2,7 +2,7 @@
 
 #include "kb11.h"
 #include <cons/cons.h>
-
+#include <odt/odt.h>
 #include <circle/util.h>
 #include <circle/setjmp.h>
 #include <circle/timer.h>
@@ -14,6 +14,7 @@ int kbdelay = 0;
 int clkdelay = 0;
 u64 systime,nowtime,clkdiv;
 FIL bload;
+ODT odt ;
 
 extern volatile bool interrupted ;
 
@@ -87,6 +88,7 @@ void loop() {
 
     while (!interrupted) {
         if (cpu.cpuStatus == CPU_STATUS_HALT) {
+            odt.loop() ;
             continue; ;
         }
 

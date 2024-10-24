@@ -24,6 +24,10 @@ cd arm11
 $make $1 $2 || exit
 cd ..
 
+cd odt
+$make $1 $2 || exit
+cd ..
+
 cd ..
 
 cd pip-11
