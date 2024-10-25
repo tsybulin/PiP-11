@@ -915,19 +915,19 @@ static const char *modnames[4] = {
 
 void KB11::ptstate() {
     Console::get()->printf("    R0 %06o R1 %06o R2 %06o R3 %06o\r\n", R[0], R[1], R[2], R[3]);
-    Console::get()->printf("    R4 %06o R5 %06o R6 %06o\r\n", R[4], R[5], R[6]);
+    Console::get()->printf("    R4 %06o R5 %06o R6 %06o PS %06o\r\n", R[4], R[5], R[6], PSW);
     
-    Console::get()->printf("    PSW [%s%s%s%s%s",
+    Console::get()->printf("    PSW [%s%s%s%s%s%s",
         modnames[currentmode()],
         N() ? "N" : "-",
         Z() ? "Z" : "-",
         V() ? "V" : "-",
         C() ? "C" : "-");
-    Console::get()->printf("]\r\ninstr %06o: %06o     ", R[7], read16(R[7]));
+    Console::get()->printf("]\r\n    instr %06o: %06o   ", R[7], read16(R[7]));
 
     disasm(R[7]);
 
-    Console::get()->printf("\r\n    PS:%06o\r\n", PSW);
+    Console::get()->printf("\r\n");
 }
 
 void KB11::pirq() {
