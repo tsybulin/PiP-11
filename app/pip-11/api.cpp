@@ -103,6 +103,7 @@ void API::processResponse(ApiCommand command, u32 arg0, u16 arg1) {
             switch (arg0) {
                     case 0177707:
                         cpu.R[7] = arg1 ;
+                        cpu.wtstate = false ;
                         break ;
                     case 0177706:
                         cpu.R[6] = arg1 ;

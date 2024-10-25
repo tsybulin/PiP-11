@@ -26,7 +26,11 @@ void ODT::loop() {
 
     if (!prompt_shown) {
         prompt_shown = true ;
-        cons->printf("\r\n%06o\r\n@", cpu.R[7]) ;
+        if (cpu.wtstate) {
+            cons->printf("\r\nw %06o\r\n@", cpu.R[7]) ;
+        } else {
+            cons->printf("\r\n%06o\r\n@", cpu.R[7]) ;
+        }
     }
 
     char c ;
@@ -186,6 +190,7 @@ void ODT::parseCommand() {
 
     if (bufptr == 1 && buf[0] == 'r') {
         cpu.RESET() ;
+        cpu.wtstate = false ;
         bufptr = 0 ;
         return ;
     }
@@ -202,6 +207,7 @@ void ODT::parseCommand() {
         if (r == 1) {
             arg1 = (arg1 >> 1) << 1 ;
             cpu.R[7] = arg1 ;
+            cpu.wtstate = false ;
             cpu.cpuStatus = CPU_STATUS_ENABLE ;
         } else {
             cons->printf("incorrect args. ? for help\r\n") ;
