@@ -253,14 +253,14 @@ void KB11::ASHC(const u16 instr) {
 	//printf("%012o %06o %012o %06o\r\n", val1, val2, (u32)sval, PSW);
 }
 
-// XOR 064RDD
+// XOR 074RDD
 void KB11::XOR(const u16 instr) {
     const auto reg = R[(instr >> 6) & 7];
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     const auto dst = reg ^ read<2>(op.operand, dpage);
-    write<2>(op.operand, dst, dpage);
     setNZ<2>(dst);
+    write<2>(op.operand, dst, dpage);
 }
 
 // SOB 077RNN
@@ -917,7 +917,7 @@ void KB11::ptstate() {
     Console::get()->printf("    R0 %06o R1 %06o R2 %06o R3 %06o\r\n", R[0], R[1], R[2], R[3]);
     Console::get()->printf("    R4 %06o R5 %06o R6 %06o PS %06o\r\n", R[4], R[5], R[6], PSW);
     
-    Console::get()->printf("    PSW [%s%s%s%s%s%s",
+    Console::get()->printf("    PSW [%s%s%s%s%s",
         modnames[currentmode()],
         N() ? "N" : "-",
         Z() ? "Z" : "-",

@@ -148,4 +148,5 @@ void UNIBUS::reset(bool i2c) {
     }
     cpu.mmu.SR[0]=0;
     cpu.mmu.SR[3]=0;
+    cpu.PSW = 0 ;
 }

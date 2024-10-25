@@ -239,7 +239,7 @@ class KB11 {
 
     constexpr inline void writePSW(const u16 psw) {
         stackpointer[currentmode()] = R[6];
-        PSW = psw;
+        PSW = psw & ~T_BIT ;
         R[6] = stackpointer[currentmode()];
     }
 

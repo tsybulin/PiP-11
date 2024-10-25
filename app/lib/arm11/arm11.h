@@ -26,9 +26,9 @@ enum INTVEC {
     INTDLT    = 0304,
 };
 
+#define T_BIT 020
+
 void trap(u16 num);
-
-
 
 typedef int t_bool;
 
