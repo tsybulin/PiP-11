@@ -6,6 +6,7 @@
 
 extern KB11 cpu ;
 extern queue_t keyboard_queue ;
+void disasm(u32 ia);
 
 ODT::ODT() :
     prompt_shown(false),
@@ -45,6 +46,7 @@ void ODT::loop() {
         case 'p':
         case 'r':
         case 's':
+        case 'u':
         case ' ':
         case '-':
         case '0':
@@ -98,7 +100,7 @@ void ODT::parseChar(const char c) {
             return ;
         }
 
-        if (buf[0] != 'g' && buf[0] != 'e' && buf[0] != 'd' && buf[0] != 's') {
+        if (buf[0] != 'g' && buf[0] != 'e' && buf[0] != 'd' && buf[0] != 's' && buf[0] != 'u') {
             return ;
         }
 
@@ -134,12 +136,13 @@ void ODT::parseCommand() {
         cons->printf("\r\n") ;
         cons->printf("?         : this help\r\n") ;
         cons->printf("c         : continue\r\n") ;
-        cons->printf("s [oa]    : step from current PC or optional octal address oa\r\n") ;
-        cons->printf("g oa      : go to octall address oa and run\r\n") ;
-        cons->printf("e ob[-oe] : examine octall address ob or range ob ..< oe\r\n") ;
         cons->printf("d oa ov   : deposit octal value ov to octall address oa\r\n") ;
+        cons->printf("e ob[-oe] : examine octall address ob or range ob ..< oe\r\n") ;
+        cons->printf("g oa      : go to octall address oa and run\r\n") ;
         cons->printf("p         : print state\r\n") ;
         cons->printf("r         : reset\r\n") ;
+        cons->printf("s [oa]    : step from current PC or optional octal address oa\r\n") ;
+        cons->printf("u oa      : disasm instruction at octall address oa\r\n") ;
         bufptr = 0 ;
         return ;
     }
@@ -277,6 +280,26 @@ void ODT::parseCommand() {
         arg1 = (arg1 >> 1) << 1 ;
 
         cpu.write16(arg1, arg2) ;
+
+        bufptr = 0 ;
+        return ;
+    }
+
+    if (bufptr > 0 && buf[0] == 'u') {
+        cons->printf("\r\n") ;
+        u32 arg1, arg2 ;
+
+        if (bufptr > 2) {
+            bufptr = 2 ;
+        }
+
+        int r = parseArg(&arg1, &arg2) ;
+        if (r == 1) {
+            arg1 = (arg1 >> 1) << 1 ;
+            disasm(arg1) ;
+        } else {
+            cons->printf("incorrect args. ? for help\r\n") ;
+        }
 
         bufptr = 0 ;
         return ;
