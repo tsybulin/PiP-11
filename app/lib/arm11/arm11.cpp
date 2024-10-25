@@ -17,6 +17,7 @@ FIL bload;
 ODT odt ;
 
 extern volatile bool interrupted ;
+extern volatile bool halted ;
 
 /* Binary loader.
 
@@ -87,6 +88,11 @@ void loop() {
     }
 
     while (!interrupted) {
+        if (halted) {
+            halted = false ;
+            cpu.cpuStatus = CPU_STATUS_HALT ;
+        }
+
         if (cpu.cpuStatus == CPU_STATUS_HALT) {
             odt.loop() ;
             continue; ;

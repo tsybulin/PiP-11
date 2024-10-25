@@ -197,6 +197,14 @@ void Console::keyStatusHandler(unsigned char modifiers, const unsigned char keys
         CMultiCoreSupport::SendIPI(0, IPI_USER) ;
     }
 
+    if (
+        modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL) &&
+        modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT) &&
+        k == HID_KEY_BACKSPACE
+    ) {
+        CMultiCoreSupport::SendIPI(0, IPI_USER + 1) ;
+    }
+
     if (!modifiers && k == HID_KEY_F12) {
         pthis->vt52_mode = !pthis->vt52_mode ;
         pthis->showStatus() ;

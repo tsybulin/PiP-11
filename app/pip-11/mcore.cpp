@@ -9,6 +9,7 @@
 extern queue_t console_queue ;
 volatile bool interrupted = false ;
 volatile bool core3active = false ;
+volatile bool halted = false ;
 
 MultiCore::MultiCore(CMemorySystem *pMemorySystem, Console *pConsole, CCPUThrottle *pCpuThrottle)
 :   CMultiCoreSupport (pMemorySystem),
@@ -101,6 +102,10 @@ void MultiCore::Run(unsigned ncore) {
 void MultiCore::IPIHandler(unsigned ncore, unsigned nipi) {
     if (nipi == IPI_USER) {
         interrupted = true ;
+    }
+
+    if (nipi == IPI_USER + 1) {
+        halted = true ;
     }
 
     CMultiCoreSupport::IPIHandler(ncore, nipi) ;
