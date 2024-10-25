@@ -468,14 +468,14 @@ void KB11::SWAB(const u16 instr) {
 void KB11::SXT(const u16 instr) {
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-    if (N()) {
-        write<2>(op.operand, 0xffff, dpage);
-        PSW &= ~FLAGZ;
-    } else {
-        write<2>(op.operand, 0, dpage);
-        PSW |= FLAGZ;
-    }
     PSW &= ~FLAGV;
+    if (N()) {
+        PSW &= ~FLAGZ;
+        write<2>(op.operand, 0xffff, dpage);
+    } else {
+        PSW |= FLAGZ;
+        write<2>(op.operand, 0, dpage);
+    }
 }
 
 void KB11::step() {
