@@ -5,7 +5,16 @@
 #include "kt11.h"
 #include "unibus.h"
 
-enum { FLAGN = 8, FLAGZ = 4, FLAGV = 2, FLAGC = 1 };
+#define PSW_BIT_C             001
+#define PSW_BIT_V             002
+#define PSW_BIT_Z             004
+#define PSW_BIT_N             010
+#define PSW_MASK_COND     0177760
+#define PSW_BIT_T             020
+#define PSW_BIT_PRIORITY     0340
+#define PSW_BIT_GRS         04000
+#define PSW_BIT_PRIV_MODE  030000
+#define PSW_BIT_MODE      0140000
 
 enum CPUStatus : u8 {
     CPU_STATUS_UNKNOWN,
@@ -81,6 +90,8 @@ class KB11 {
     UNIBUS unibus;
     bool print=false;
     bool wtstate;
+    bool wasRTT = false ;
+
     inline u16 read16(const u16 va, bool d = false) {
         const auto a = mmu.decode<false>(va, currentmode(), d);
         switch (a) {
@@ -108,13 +119,13 @@ class KB11 {
     u16 pir_str = 0 ;
     u8 pir_cnt = 0 ;
     
-    inline bool N() { return PSW & FLAGN; }
-    inline bool Z() { return PSW & FLAGZ; }
-    inline bool V() { return PSW & FLAGV; }
-    inline bool C() { return PSW & FLAGC; }
+    inline bool N() { return PSW & PSW_BIT_N; }
+    inline bool Z() { return PSW & PSW_BIT_Z; }
+    inline bool V() { return PSW & PSW_BIT_V; }
+    inline bool C() { return PSW & PSW_BIT_C; }
     inline void setZ(const bool b) {
         if (b)
-            PSW |= FLAGZ;
+            PSW |= PSW_BIT_Z;
     }
 
     inline u16 fetch16() {
@@ -194,20 +205,6 @@ class KB11 {
         }
     }
 
-    // OOMR
-    // constexpr inline bool dmode(const u16 instr) {
-    //     const u8 r = instr & 7 ;
-    //     const auto mode = (instr >> 3) & 7;
-    //     if (mode == 1 || mode == 6 || mode == 7) {
-    //         return true ;
-    //     }
-    //     if ((mode == 2 || mode == 3 || mode == 4 || mode == 5) && r < 7) {
-    //         return true ;
-    //     }
-
-    //     return false ;
-    // }
-
     template <auto len> constexpr u16 SS(const u16 instr) {
         static_assert(len == 1 || len == 2);
 
@@ -237,9 +234,9 @@ class KB11 {
         }
     }
 
-    constexpr inline void writePSW(const u16 psw) {
+    constexpr inline void writePSW(const u16 psw, const bool clear_t = true) {
         stackpointer[currentmode()] = R[6];
-        PSW = psw & ~T_BIT ;
+        PSW = clear_t ? (psw & ~PSW_BIT_T) : psw ;
         R[6] = stackpointer[currentmode()];
     }
 
@@ -322,30 +319,30 @@ class KB11 {
 
         const auto dst = read<l>(op.operand, dpage);
         const auto sval = (src - dst) & max<l>();
-        PSW &= 0xFFF0;
+        PSW &= PSW_MASK_COND;
         if (sval == 0) {
-            PSW |= FLAGZ;
+            PSW |= PSW_BIT_Z;
         }
         if (sval & msb<l>()) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
         if (((src ^ dst) & msb<l>()) && (!((dst ^ sval) & msb<l>()))) {
-            PSW |= FLAGV;
+            PSW |= PSW_BIT_V;
         }
         if (src < dst) {
-            PSW |= FLAGC;
+            PSW |= PSW_BIT_C;
         }
     }
 
     // Set N & Z clearing V (C unchanged)
     template <auto len> inline void setNZ(const u16 v) {
         static_assert(len == 1 || len == 2);
-        PSW &= (0xFFF0 | FLAGC);
+        PSW &= (PSW_MASK_COND | PSW_BIT_C);
         if (v & msb<len>()) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
         if ((v & max<len>()) == 0) {
-            PSW |= FLAGZ;
+            PSW |= PSW_BIT_Z;
         }
     }
 
@@ -353,21 +350,21 @@ class KB11 {
     template <auto len> inline void setNZV(const u16 v) {
         setNZ<len>(v);
         if (v == msb<len>()) {
-            PSW |= FLAGV;
+            PSW |= PSW_BIT_V;
         }
     }
 
     // Set N, Z & C clearing V
     template <auto len> inline void setNZC(const u16 v) {
         static_assert(len == 1 || len == 2);
-        PSW &= 0xFFF0;
+        PSW &= PSW_MASK_COND ;
         if (v & msb<len>()) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
         if (v == 0) {
-            PSW |= FLAGZ;
+            PSW |= PSW_BIT_Z;
         }
-        PSW |= FLAGC;
+        PSW |= PSW_BIT_C;
     }
 
     template <auto l> void BIC(const u16 instr) {
@@ -377,10 +374,10 @@ class KB11 {
         const auto dst = read<l>(op.operand, dpage);
         auto uval = (max<l>() ^ src) & dst;
         write<l>(op.operand, uval, dpage);
-        PSW &= 0xFFF1;
+        PSW &= (PSW_MASK_COND | PSW_BIT_C);
         setZ(uval == 0);
         if (uval & msb<l>()) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
     }
 
@@ -390,18 +387,18 @@ class KB11 {
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage);
         auto uval = src | dst;
-        PSW &= 0xFFF1;
+        PSW &= (PSW_MASK_COND | PSW_BIT_C);
         setZ(uval == 0);
         if (uval & msb<l>()) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
         write<l>(op.operand, uval, dpage);
     }
 
     // CLR 0050DD, CLRB 1050DD
     template <auto l> void CLR(const u16 instr) {
-        PSW &= 0xFFF0;
-        PSW |= FLAGZ;
+        PSW &= PSW_MASK_COND;
+        PSW |= PSW_BIT_Z;
         Operand op = DA<l>(instr) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         write<l>(op.operand, 0, dpage);
@@ -413,14 +410,14 @@ class KB11 {
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = ~read<l>(op.operand, dpage);
         write<l>(op.operand, dst, dpage);
-        PSW &= 0xFFF0;
+        PSW &= PSW_MASK_COND;
         if ((dst & msb<l>())) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
         if ((dst & max<l>()) == 0) {
-            PSW |= FLAGZ;
+            PSW |= PSW_BIT_Z;
         }
-        PSW |= FLAGC;
+        PSW |= PSW_BIT_C;
     }
 
     // DEC 0053DD, DECB 1053DD
@@ -432,7 +429,7 @@ class KB11 {
         write<l>(op.operand, uval, dpage);
         setNZ<l>(uval);
         if (oval == msb<l>()) {
-            PSW |= FLAGV;
+            PSW |= PSW_BIT_V;
         }
     }
 
@@ -442,17 +439,17 @@ class KB11 {
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = (-read<l>(op.operand, dpage)) & max<l>();
         write<l>(op.operand, dst, dpage);
-        PSW &= 0xFFF0;
+        PSW &= PSW_MASK_COND;
         if (dst & msb<l>()) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
         if ((dst & max<l>()) == 0) {
-            PSW |= FLAGZ;
+            PSW |= PSW_BIT_Z;
         } else {
-            PSW |= FLAGC;
+            PSW |= PSW_BIT_C;
         }
         if (dst == msb<l>()) {
-            PSW |= FLAGV;
+            PSW |= PSW_BIT_V;
         }
     }
 
@@ -460,26 +457,26 @@ class KB11 {
         Operand op = DA<l>(instr) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         auto uval = read<l>(op.operand, dpage);
-        if (PSW & FLAGC) {
+        if (PSW & PSW_BIT_C) {
             write<l>(op.operand, (uval + 1) & max<l>(), dpage);
-            PSW &= 0xFFF0;
+            PSW &= PSW_MASK_COND;
             if ((uval + 1) & msb<l>()) {
-                PSW |= FLAGN;
+                PSW |= PSW_BIT_N;
             }
             setZ(uval == max<l>());
             if (l == 1)
                 uval = (uval << 8) | 0xff;
             if (uval == 0077777) {
-                PSW |= FLAGV;
+                PSW |= PSW_BIT_V;
             }
             if (uval == 0177777) {
-                PSW |= FLAGC;
+                PSW |= PSW_BIT_C;
             }
         }
         else {
-            PSW &= 0xFFF0;
+            PSW &= PSW_MASK_COND;
             if (uval & msb<l>()) {
-                PSW |= FLAGN;
+                PSW |= PSW_BIT_N;
             }
             setZ(uval == 0);
         }
@@ -491,18 +488,18 @@ class KB11 {
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         auto sval = read<l>(op.operand, dpage);
         auto qval = sval;
-        PSW &= ~(FLAGN | FLAGV | FLAGZ);
-        if (PSW & FLAGC) {
+        PSW &= ~(PSW_BIT_N | PSW_BIT_V | PSW_BIT_Z);
+        if (PSW & PSW_BIT_C) {
             if (sval)
-                PSW ^= FLAGC;
+                PSW ^= PSW_BIT_C;
             sval = (sval - 1) & max<l>();
             write<l>(op.operand, sval, dpage);
         }
         setZ(sval == 0);
         if (qval == msb<l>())
-            PSW |= FLAGV;
+            PSW |= PSW_BIT_V;
         if (sval & msb<l>())
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
 
     }
 
@@ -511,23 +508,23 @@ class KB11 {
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage);
         auto result = dst >> 1;
-        if (PSW & FLAGC) {
+        if (PSW & PSW_BIT_C) {
             result |= msb<l>();
         }
         write<l>(op.operand, result, dpage);
-        PSW &= 0xFFF0;
+        PSW &= PSW_MASK_COND;
         if (dst & 1) {
             // shift lsb into carry
-            PSW |= FLAGC;
+            PSW |= PSW_BIT_C;
         }
         if (result & msb<l>()) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
         if ((result & max<l>()) == 0) {
-            PSW |= FLAGZ;
+            PSW |= PSW_BIT_Z;
         }
-        if (!(PSW & FLAGC) ^ !(PSW & FLAGN)) {
-            PSW |= FLAGV;
+        if (!(PSW & PSW_BIT_C) ^ !(PSW & PSW_BIT_N)) {
+            PSW |= PSW_BIT_V;
         }
     }
 
@@ -535,19 +532,19 @@ class KB11 {
         Operand op = DA<l>(instr) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         u32 sval = read<l>(op.operand, dpage) << 1;
-        if (PSW & FLAGC) {
+        if (PSW & PSW_BIT_C) {
             sval |= 1;
         }
-        PSW &= 0xFFF0;
+        PSW &= PSW_MASK_COND;
         if (sval & (max<l>() + 1)) {
-            PSW |= FLAGC;
+            PSW |= PSW_BIT_C;
         }
         if (sval & msb<l>()) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
         setZ(!(sval & max<l>()));
         if ((sval ^ (sval >> 1)) & msb<l>()) {
-            PSW |= FLAGV;
+            PSW |= PSW_BIT_V;
         }
         sval &= max<l>();
         write<l>(op.operand, sval, dpage);
@@ -557,16 +554,16 @@ class KB11 {
         Operand op = DA<l>(instr) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         auto uval = read<l>(op.operand, dpage);
-        PSW &= 0xFFF0;
+        PSW &= PSW_MASK_COND;
         if (uval & 1) {
-            PSW |= FLAGC;
+            PSW |= PSW_BIT_C;
         }
         uval = (uval & msb<l>()) | (uval >> 1);
         if (uval & msb<l>()) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
-        if (!(PSW & FLAGC) ^ !(PSW & FLAGN)) {
-            PSW |= FLAGV;
+        if (!(PSW & PSW_BIT_C) ^ !(PSW & PSW_BIT_N)) {
+            PSW |= PSW_BIT_V;
         }
         setZ(uval == 0);
         write<l>(op.operand, uval, dpage);
@@ -577,15 +574,15 @@ class KB11 {
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         // TODO(dfc) doesn't need to be an sval
         u32 sval = read<l>(op.operand, dpage);
-        PSW &= 0xFFF0;
+        PSW &= PSW_MASK_COND;
         if (sval & msb<l>()) {
-            PSW |= FLAGC;
+            PSW |= PSW_BIT_C;
         }
         if (sval & (msb<l>() >> 1)) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
         if ((sval ^ (sval << 1)) & msb<l>()) {
-            PSW |= FLAGV;
+            PSW |= PSW_BIT_V;
         }
         sval = (sval << 1) & max<l>();
         setZ(sval == 0);
@@ -616,12 +613,12 @@ class KB11 {
         Operand op = DA<l>(instr) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage);
-        PSW &= 0xFFF0;
+        PSW &= PSW_MASK_COND;
         if ((dst & max<l>()) == 0) {
-            PSW |= FLAGZ;
+            PSW |= PSW_BIT_Z;
         }
         if (dst & msb<l>()) {
-            PSW |= FLAGN;
+            PSW |= PSW_BIT_N;
         }
     }
 
@@ -662,6 +659,7 @@ class KB11 {
     void RTS(const u16 instr);
     void SWAB(u16);
     void SXT(u16);
+    void RTI();
     void RTT();
     void RESET();
     void WAIT();

@@ -105,6 +105,7 @@ void loop() {
         }
         
         if (!cpu.wtstate) {
+            cpu.wasRTT = false ;
             cpu.step();
         }
         
@@ -124,6 +125,10 @@ void loop() {
         if (nowtime - systime > clkdiv) {
             cpu.unibus.kw11.tick();
             systime = nowtime;
+        }
+
+        if ((cpu.PSW & PSW_BIT_T) && !cpu.wasRTT) {
+            trap(INTDEBUG) ;
         }
 
         if (cpu.cpuStatus == CPU_STATUS_STEP) {

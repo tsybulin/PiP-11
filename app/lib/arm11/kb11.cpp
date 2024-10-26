@@ -101,10 +101,10 @@ void KB11::ADD(const u16 instr) {
     PSW &= 0xFFF0;
     setNZ<2>(sum);
     if (((~src ^ dst) & (src ^ sum)) & 0x8000) {
-        PSW |= FLAGV;
+        PSW |= PSW_BIT_V;
     }
     if ((s32(src) + s32(dst)) > 0xFFFF) {
-        PSW |= FLAGC;
+        PSW |= PSW_BIT_C;
     }
 }
 
@@ -119,10 +119,10 @@ void KB11::SUB(const u16 instr) {
     write<2>(op.operand, uval, dpage);
     setNZ<2>(uval);
     if (((val1 ^ val2) & (~val1 ^ uval)) & 0x8000) {
-        PSW |= FLAGV;
+        PSW |= PSW_BIT_V;
     }
     if (val1 > val2) {
-        PSW |= FLAGC;
+        PSW |= PSW_BIT_C;
     }
 }
 
@@ -145,13 +145,13 @@ void KB11::MUL(const u16 instr) {
 	R[reg | 1] = sval & 0xFFFF;
 	PSW &= 0xFFF0;
 	if (sval < 0) {
-		PSW |= FLAGN;
+		PSW |= PSW_BIT_N;
 	}
 	if (sval == 0) {
-		PSW |= FLAGZ;
+		PSW |= PSW_BIT_Z;
 	}
 	if ((sval < -(1 << 15)) || (sval >= ((1L << 15) - 1))) {
-		PSW |= FLAGC;
+		PSW |= PSW_BIT_C;
 	}
 }
 
@@ -165,20 +165,20 @@ void KB11::DIV(const u16 instr) {
 	if (val2 > 32767)
 		val2 |= 0xffff0000;
 	if (val2 == 0) {
-		PSW |= FLAGC | FLAGV;
+		PSW |= PSW_BIT_C | PSW_BIT_V;
 		return;
 	}
 	if ((val1 / val2) >= 0x10000) {
-		PSW |= FLAGV;
+		PSW |= PSW_BIT_V;
 		return;
 	}
 	R[reg] = (val1 / val2) & 0xFFFF;
 	R[reg | 1] = (val1 % val2) & 0xFFFF;
 	if (R[reg] == 0) {
-		PSW |= FLAGZ;
+		PSW |= PSW_BIT_Z;
 	}
 	if (R[reg] & 0100000) {
-		PSW |= FLAGN;
+		PSW |= PSW_BIT_N;
 	}
 }
 
@@ -197,7 +197,7 @@ void KB11::ASH(const u16 instr) {
 		sval = sval << 1;
 		sval = sval >> val2;
 		if (sval & 1)
-			PSW |= FLAGC;
+			PSW |= PSW_BIT_C;
 		sval = sval >> 1;
 	}
 	else {
@@ -205,17 +205,17 @@ void KB11::ASH(const u16 instr) {
 		sval = sval << val2;
 		if (sval & 0xffff0000)
 			if ((sval & 0xffff0000) != (msk & 0xffff0000))
-				PSW |= FLAGV;
+				PSW |= PSW_BIT_V;
 		if ((sval & 0x8000) != (val1 & 0x8000))
-			PSW |= FLAGV;
+			PSW |= PSW_BIT_V;
 		if (sval & 0200000)
-			PSW |= FLAGC;
+			PSW |= PSW_BIT_C;
 	}
 	sval &= 0xffff;
 	R[reg & 7] = sval;
 	setZ(sval == 0);
 	if (sval & 0100000) {
-		PSW |= FLAGN;
+		PSW |= PSW_BIT_N;
 	}
 }
 
@@ -234,22 +234,22 @@ void KB11::ASHC(const u16 instr) {
 		msk = (1 << val2) - 1;
 		sval = sval >> val2;
 		if ((val1 & msk) && val2)
-			PSW |= FLAGC;
+			PSW |= PSW_BIT_C;
 	}
 	else
 	{
 		sval = sval << val2;
 		msk = 0x100000000 >> val2;
 		if ((sval & 0x80000000) != (val1 & 0x80000000))
-			PSW |= FLAGV;
+			PSW |= PSW_BIT_V;
 		if ((val1 & msk) && val2)
-			PSW |= FLAGC;
+			PSW |= PSW_BIT_C;
 	}
 	R[reg & 7] = (sval >> 16) & 0xFFFF;
 	R[(reg & 7) | 1] = sval & 0xFFFF;
 	setZ((sval & 0xffffffff) == 0);
 	if (sval & 0x80000000)
-		PSW |= FLAGN;
+		PSW |= PSW_BIT_N;
 	//printf("%012o %06o %012o %06o\r\n", val1, val2, (u32)sval, PSW);
 }
 
@@ -288,7 +288,7 @@ void KB11::FIS(const u16 instr)
     op1 = bfr.xflt;
     bfr.xint = read<2>(adr + 2) | (read<2>(adr) << 16);
     op2 = bfr.xflt;
-    PSW &= ~(FLAGN | FLAGV | FLAGZ | FLAGC);
+    PSW &= ~(PSW_BIT_N | PSW_BIT_V | PSW_BIT_Z | PSW_BIT_C);
     switch (instr & 070) {
     case 0:                 // FADD
         bfr.xflt = op1 + op2;
@@ -301,7 +301,7 @@ void KB11::FIS(const u16 instr)
         break;
     case 030:
         if (op2 == 0.0) {
-            PSW |= (FLAGN | FLAGV | FLAGC);
+            PSW |= (PSW_BIT_N | PSW_BIT_V | PSW_BIT_C);
             trap(INTFIS);
         }
         bfr.xflt = (op1 / op2) * 4.0f;
@@ -309,9 +309,9 @@ void KB11::FIS(const u16 instr)
     }
     R[instr & 7] += 4;
     if (bfr.xflt == 0.0)
-        PSW |= FLAGZ;
+        PSW |= PSW_BIT_Z;
     if (bfr.xflt < 0.0)
-        PSW |= FLAGN;
+        PSW |= PSW_BIT_N;
     write<2>(adr + 4, bfr.xint >> 16);
     write<2>(adr + 6, bfr.xint);
 }
@@ -417,19 +417,34 @@ void KB11::MFPT() {
     trap(INTINVAL); // not a PDP11/44
 }
 
-// RTI 000004, RTT 000006
-void KB11::RTT() {
-    R[7] = pop();
-    auto psw = pop();
-    psw &= 0xf8ff;
-    if (currentmode()) { // user / super restrictions
-        // keep SPL and allow lower only for modes and register set
-        //psw = (PSW & 0xf81f) | (psw & 0xf8e0);
-        psw = (PSW & 0177760) | (psw & 017);
+// RTI 000004
+void KB11::RTI() {
+    R[7] = pop() ;
+    auto psw = pop() ;
+    const u16 mode = currentmode() ;
+    if (mode == 1) {
+        psw = (psw & 0174000) | (PSW & 0174360) ;
+    } else if (mode == 3) {
+        psw = (psw & 0174000) | (PSW & 0174360) ;
     }
-    writePSW(psw);
-    if (R[7] == 0)
-        R[7] = R[7];
+
+    writePSW(psw, false) ;
+}
+
+// RTT 000006
+void KB11::RTT() {
+    wasRTT = true ;
+
+    R[7] = pop() ;
+    auto psw = pop() ;
+    const u16 mode = currentmode() ;
+    if (mode == 1) {
+        psw = (psw & 0174000) | (PSW & 0174360) ;
+    } else if (mode == 3) {
+        psw = (psw & 0174000) | (PSW & 0174360) ;
+    }
+
+    writePSW(psw, false) ;
 }
 
 void KB11::WAIT() {
@@ -457,10 +472,10 @@ void KB11::SWAB(const u16 instr) {
     write<2>(op.operand, dst, dpage);
     PSW &= 0xFFF0;
     if ((dst & 0xff) == 0) {
-        PSW |= FLAGZ;
+        PSW |= PSW_BIT_Z;
     }
     if (dst & 0x80) {
-        PSW |= FLAGN;
+        PSW |= PSW_BIT_N;
     }
 }
 
@@ -468,12 +483,12 @@ void KB11::SWAB(const u16 instr) {
 void KB11::SXT(const u16 instr) {
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-    PSW &= ~FLAGV;
+    PSW &= ~PSW_BIT_V;
     if (N()) {
-        PSW &= ~FLAGZ;
+        PSW &= ~PSW_BIT_Z;
         write<2>(op.operand, 0xffff, dpage);
     } else {
-        PSW |= FLAGZ;
+        PSW |= PSW_BIT_Z;
         write<2>(op.operand, 0, dpage);
     }
 }
@@ -514,6 +529,8 @@ void KB11::step() {
                                     RESET();
                                     return;
                                 case 2: // RTI 000002
+                                    RTI();
+                                    return;
                                 case 6: // RTT 000006
                                     RTT();
                                     return;
