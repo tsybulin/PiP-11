@@ -579,7 +579,7 @@ void KB11::step() {
                                 case 3: // SPL 00023N
                                     if (currentmode())
                                         trap(INTINVAL);
-                                    PSW = ((PSW & 0xf81f) | ((instr & 7) << 5));
+                                    PSW = ((PSW & 0177037) | ((instr & 7) << 5));
                                     return;
                                 case 4: // CLR CC 00024C Part 1 without N
                                 case 5: // CLR CC 00025C Part 2 with N
@@ -889,6 +889,7 @@ void KB11::interrupt(u8 vec, u8 pri) {
         gprintf("Thou darst calling interrupt() with an odd vector number?\n");
         while(!interrupted);
     }
+
     // fast path
     if (itab[0].vec == 0) {
         itab[0].vec = vec;
