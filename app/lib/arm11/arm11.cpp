@@ -106,6 +106,7 @@ void loop() {
         
         if (!cpu.wtstate) {
             cpu.wasRTT = false ;
+            cpu.stackTrap = STACK_TRAP_NONE ;
             cpu.step();
         }
         
@@ -125,6 +126,13 @@ void loop() {
         if (nowtime - systime > clkdiv) {
             cpu.unibus.kw11.tick();
             systime = nowtime;
+        }
+
+        if (cpu.stackTrap == STACK_TRAP_YELLOW) {
+            trap(INTBUS) ;
+        } else if (cpu.stackTrap == STACK_TRAP_RED) {
+            cpu.R[6] = 4 ;
+            cpu.trapat(INTBUS) ;
         }
 
         if ((cpu.PSW & PSW_BIT_T) && !cpu.wasRTT) {

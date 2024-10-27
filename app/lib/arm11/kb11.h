@@ -16,6 +16,9 @@
 #define PSW_BIT_PRIV_MODE  030000
 #define PSW_BIT_MODE      0140000
 
+#define STACK_LIMIT_YELLOW 0400
+#define STACK_LIMIT_RED    0340
+
 enum CPUStatus : u8 {
     CPU_STATUS_UNKNOWN,
     CPU_STATUS_ENABLE,
@@ -26,6 +29,12 @@ enum CPUStatus : u8 {
 enum OperandType : u8 {
     OPERAND_INSTRUCTION,
     OPERAND_DATA
+} ;
+
+enum StackTrap : u8 {
+    STACK_TRAP_NONE,
+    STACK_TRAP_YELLOW,
+    STACK_TRAP_RED
 } ;
 
 class API ;
@@ -91,6 +100,7 @@ class KB11 {
     bool print=false;
     bool wtstate;
     bool wasRTT = false ;
+    StackTrap stackTrap = STACK_TRAP_NONE ;
 
     inline u16 read16(const u16 va, bool d = false) {
         const auto a = mmu.decode<false>(va, currentmode(), d);
@@ -156,10 +166,23 @@ class KB11 {
             rflag++;
             return {(u16)(instr & 7), OPERAND_INSTRUCTION} ;
         }
-        return fetchOperand<len>(instr);
+
+        return fetchOperand<len>(instr, true);
     }
 
-    template <auto len> Operand fetchOperand(const u16 instr) {
+    inline void checkStackLimit(const u16 addr) {
+        if (currentmode() == 0) {
+            if (addr < (stacklimit + STACK_LIMIT_YELLOW)) {
+                stackTrap = STACK_TRAP_YELLOW ;
+            }
+        }
+
+        if (addr < (stacklimit + STACK_LIMIT_RED)) {
+            stackTrap = STACK_TRAP_RED ;
+        }
+    }
+
+    template <auto len> Operand fetchOperand(const u16 instr, bool check_stack = false) {
         const auto mode = (instr >> 3) & 7;
         const auto reg = instr & 7;
 
@@ -175,31 +198,49 @@ class KB11 {
                 return result ;
             case 2: // Mode 2: (R)+ including immediate operand #x
                 result.operand = R[reg];
+                if (check_stack && reg == 6) {
+                    checkStackLimit(R[6]) ;
+                }
                 R[reg] += (reg >= 6) ? 2 : len;
                 result.operandType = reg < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
                 return result ;
             case 3: // Mode 3: @(R)+
                 result.operand = R[reg];
+                if (check_stack && reg == 6) {
+                    checkStackLimit(R[6]) ;
+                }
                 R[reg] += 2;
                 result.operand = read16(result.operand, den);
                 result.operandType = reg < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
                 return result ;
             case 4: // Mode 4: -(R)
                 R[reg] -= (reg >= 6) ? 2 : len;
+                if (check_stack && reg == 6) {
+                    checkStackLimit(R[6]) ;
+                }
                 result.operand = R[reg];
                 return result;
             case 5: // Mode 5: @-(R)
                 R[reg] -= 2;
+                if (check_stack && reg == 6) {
+                    checkStackLimit(R[6]) ;
+                }
                 result.operand = R[reg];
                 result.operand = read16(result.operand, den);
                 return result;
             case 6: // Mode 6: d(R)
                 result.operand = fetch16();
                 result.operand = result.operand + R[reg];
+                if (check_stack && reg == 6) {
+                    checkStackLimit(result.operand) ;
+                }
                 return result;
             default: // 7 Mode 7: @d(R)
                 result.operand = fetch16();
                 result.operand = result.operand + R[reg];
+                if (check_stack && reg == 6) {
+                    checkStackLimit(result.operand) ;
+                }
                 result.operand = read16(result.operand, den);
                 return result ;
         }
@@ -215,6 +256,7 @@ class KB11 {
 
         const Operand op = fetchOperand<len>(instr >> 6);
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+
         if constexpr (len == 2) {
             return read16(op.operand, dpage);
         }
@@ -370,6 +412,9 @@ class KB11 {
     template <auto l> void BIC(const u16 instr) {
         const auto src = SS<l>(instr);
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage);
         auto uval = (max<l>() ^ src) & dst;
@@ -384,6 +429,9 @@ class KB11 {
     template <auto l> void BIS(const u16 instr) {
         const auto src = SS<l>(instr);
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage);
         auto uval = src | dst;
@@ -400,6 +448,9 @@ class KB11 {
         PSW &= PSW_MASK_COND;
         PSW |= PSW_BIT_Z;
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         write<l>(op.operand, 0, dpage);
     }
@@ -407,6 +458,9 @@ class KB11 {
     // COM 0051DD, COMB 1051DD
     template <auto l> void COM(const u16 instr) {
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = ~read<l>(op.operand, dpage);
         write<l>(op.operand, dst, dpage);
@@ -423,6 +477,9 @@ class KB11 {
     // DEC 0053DD, DECB 1053DD
     template <auto l> void _DEC(const u16 instr) {
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto oval = read<l>(op.operand, dpage) & max<l>();
         const auto uval = (read<l>(op.operand, dpage) - 1) & max<l>();
@@ -436,6 +493,9 @@ class KB11 {
     // NEG 0054DD, NEGB 1054DD
     template <auto l> void NEG(const u16 instr) {
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = (-read<l>(op.operand, dpage)) & max<l>();
         write<l>(op.operand, dst, dpage);
@@ -455,6 +515,9 @@ class KB11 {
 
     template <auto l> void _ADC(const u16 instr) {
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         auto uval = read<l>(op.operand, dpage);
         if (PSW & PSW_BIT_C) {
@@ -485,6 +548,9 @@ class KB11 {
 
     template <auto l> void SBC(const u16 instr) {
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         auto sval = read<l>(op.operand, dpage);
         auto qval = sval;
@@ -505,6 +571,9 @@ class KB11 {
 
     template <auto l> void ROR(const u16 instr) {
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage);
         auto result = dst >> 1;
@@ -530,6 +599,9 @@ class KB11 {
 
     template <auto l> void ROL(const u16 instr) {
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         u32 sval = read<l>(op.operand, dpage) << 1;
         if (PSW & PSW_BIT_C) {
@@ -552,6 +624,9 @@ class KB11 {
 
     template <auto l> void ASR(const u16 instr) {
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         auto uval = read<l>(op.operand, dpage);
         PSW &= PSW_MASK_COND;
@@ -571,6 +646,9 @@ class KB11 {
 
     template <auto l> void ASL(const u16 instr) {
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         // TODO(dfc) doesn't need to be an sval
         u32 sval = read<l>(op.operand, dpage);
@@ -592,6 +670,9 @@ class KB11 {
     // INC 0052DD, INCB 1052DD
     template <auto l> void INC(const u16 instr) {
         Operand op = DA<l>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage) + 1;
         write<l>(op.operand, dst, dpage);
@@ -635,6 +716,9 @@ class KB11 {
 
         // const bool dpage = denabled() && dmode(instr) ;
         Operand op = DA<len>(instr) ;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         write<len>(op.operand, src, dpage);
     }

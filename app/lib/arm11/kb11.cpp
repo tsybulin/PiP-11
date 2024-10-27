@@ -38,7 +38,7 @@ void KB11::reset(u16 start) {
     }
 
     R[7] = start;
-    stacklimit = 0xff;
+    stacklimit = 0400 ;
     switchregister = 0;
     unibus.reset(false);
     wtstate = false;
@@ -80,7 +80,7 @@ void KB11::write16(const u16 va, const u16 v, bool d) {
             writePSW(v);
             break;
         case 0777774:
-            stacklimit = v;
+            stacklimit = v & 0177400 ;
             break;
         case 0777570:
             displayregister = v;
@@ -94,6 +94,9 @@ void KB11::write16(const u16 va, const u16 v, bool d) {
 void KB11::ADD(const u16 instr) {
     const auto src = SS<2>(instr);
     Operand op = DA<2>(instr) ;
+    if (stackTrap == STACK_TRAP_RED) {
+        return ;
+    }
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     const auto dst = read<2>(op.operand, dpage);
     const auto sum = src + dst;
@@ -112,6 +115,9 @@ void KB11::ADD(const u16 instr) {
 void KB11::SUB(const u16 instr) {
     const auto val1 = SS<2>(instr);
     Operand op = DA<2>(instr) ;
+    if (stackTrap == STACK_TRAP_RED) {
+        return ;
+    }
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     const auto val2 = read<2>(op.operand, dpage);
     const auto uval = (val2 - val1) & 0xFFFF;
@@ -257,6 +263,9 @@ void KB11::ASHC(const u16 instr) {
 void KB11::XOR(const u16 instr) {
     const auto reg = R[(instr >> 6) & 7];
     Operand op = DA<2>(instr) ;
+    if (stackTrap == STACK_TRAP_RED) {
+        return ;
+    }
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     const auto dst = reg ^ read<2>(op.operand, dpage);
     setNZ<2>(dst);
@@ -330,6 +339,9 @@ void KB11::MTPS(const u16 instr) {
 
 void KB11::MFPS(const u16 instr) {
     Operand op = DA<1>(instr) ;
+    if (stackTrap == STACK_TRAP_RED) {
+        return ;
+    }
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     auto dst = PSW & 0357;
     if (PSW & msb<1>() && ((instr & 030) == 0)) {
@@ -347,6 +359,9 @@ void KB11::JSR(const u16 instr) {
         trap(INTBUS);
     }
     Operand op = DA<2>(instr) ;
+    if (stackTrap == STACK_TRAP_RED) {
+        return ;
+    }
     const auto reg = (instr >> 6) & 7;
     push(R[reg]);
     R[reg] = R[7];
@@ -400,6 +415,9 @@ void KB11::MTPI(const u16 instr) {
         }
     } else {
         const auto da = DA<2>(instr).operand;
+        if (stackTrap == STACK_TRAP_RED) {
+            return ;
+        }
         unibus.write16(mmu.decode<true>(da, previousmode()), uval);
     }
     setNZ<2>(uval);
@@ -460,12 +478,16 @@ void KB11::RESET() {
         // RESET is ignored outside of kernel mode
         return;
     }
+    stacklimit = 0 ;
     unibus.reset();
 }
 
 // SWAB 0003DD
 void KB11::SWAB(const u16 instr) {
     Operand op = DA<2>(instr) ;
+    if (stackTrap == STACK_TRAP_RED) {
+        return ;
+    }
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     auto dst = read<2>(op.operand, dpage);
     dst = (dst << 8) | (dst >> 8);
@@ -482,6 +504,9 @@ void KB11::SWAB(const u16 instr) {
 // SXT 0067DD
 void KB11::SXT(const u16 instr) {
     Operand op = DA<2>(instr) ;
+    if (stackTrap == STACK_TRAP_RED) {
+        return ;
+    }
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     PSW &= ~PSW_BIT_V;
     if (N()) {
