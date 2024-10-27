@@ -131,7 +131,7 @@ void loop() {
         if (cpu.stackTrap == STACK_TRAP_YELLOW) {
             trap(INTBUS) ;
         } else if (cpu.stackTrap == STACK_TRAP_RED) {
-            cpu.R[6] = 4 ;
+            cpu.RR[6] = 4 ;
             cpu.trapat(INTBUS) ;
         }
 

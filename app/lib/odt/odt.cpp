@@ -27,9 +27,9 @@ void ODT::loop() {
     if (!prompt_shown) {
         prompt_shown = true ;
         if (cpu.wtstate) {
-            cons->printf("\r\nw %06o\r\n@", cpu.R[7]) ;
+            cons->printf("\r\nw %06o\r\n@", cpu.RR[7]) ;
         } else {
-            cons->printf("\r\n%06o\r\n@", cpu.R[7]) ;
+            cons->printf("\r\n%06o\r\n@", cpu.RR[7]) ;
         }
     }
 
@@ -167,7 +167,7 @@ void ODT::parseCommand() {
         int r = parseArg(&arg1, &arg2) ;
         if (r == 1) {
             arg1 = (arg1 >> 1) << 1 ;
-            cpu.R[7] = arg1 ;
+            cpu.RR[7] = arg1 ;
         }
         
         if (r == 2) {
@@ -206,7 +206,7 @@ void ODT::parseCommand() {
         int r = parseArg(&arg1, &arg2) ;
         if (r == 1) {
             arg1 = (arg1 >> 1) << 1 ;
-            cpu.R[7] = arg1 ;
+            cpu.RR[7] = arg1 ;
             cpu.wtstate = false ;
             cpu.cpuStatus = CPU_STATUS_ENABLE ;
         } else {

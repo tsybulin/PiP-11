@@ -12,7 +12,8 @@
 #define PSW_MASK_COND     0177760
 #define PSW_BIT_T             020
 #define PSW_BIT_PRIORITY     0340
-#define PSW_BIT_GRS         04000
+#define PSW_BIT_UNUSED      03400
+#define PSW_BIT_REG_SET     04000
 #define PSW_BIT_PRIV_MODE  030000
 #define PSW_BIT_MODE      0140000
 
@@ -109,21 +110,33 @@ class KB11 {
                 return PSW;
             case 0777774:
                 return stacklimit;
+            case 0777770:
+                return microbrreg ;
             case 0777570:
                 return switchregister;
             default:
                 return unibus.read16(a);
         }
     }
+
     void write16(const u16 va, const u16 v, bool d = false);
+    
+    inline u8 REG(const u8 reg) {
+        return reg > 5 ? reg : PSW & PSW_BIT_REG_SET ? reg + 8 : reg ;
+    }
+    
+    inline u8 REGNAME(const u8 reg) {
+        return reg > 5 ? reg : PSW & PSW_BIT_REG_SET ? reg + 10 : reg ;
+    }
+
     u16 PC;               // holds R[7] during instruction execution
     u16 PSW;              // processor status word
-    u16 R[8]; // R0-R7
+    u16 RR[14]; // R0-R7, R10-15
 
     volatile CPUStatus cpuStatus = CPU_STATUS_UNKNOWN ;
   private:
     u16 oldPSW;
-    u16 stacklimit, switchregister, displayregister;
+    u16 stacklimit, switchregister, displayregister, microbrreg ;
     u16 stackpointer[4]; // Alternate R6 (kernel, super, illegal, user)
 
     u16 pir_str = 0 ;
@@ -139,19 +152,19 @@ class KB11 {
     }
 
     inline u16 fetch16() {
-        const auto val = read16(R[7]);
-        R[7] += 2;
+        const auto val = read16(RR[7]);
+        RR[7] += 2;
         return val;
     }
 
     inline void push(const u16 v) {
-        R[6] -= 2;
-        write16(R[6], v);
+        RR[6] -= 2;
+        write16(RR[6], v);
     }
 
     inline u16 pop() {
-        const auto val = read16(R[6]);
-        R[6] += 2;
+        const auto val = read16(RR[6]);
+        RR[6] += 2;
         return val;
     }
 
@@ -184,7 +197,7 @@ class KB11 {
 
     template <auto len> Operand fetchOperand(const u16 instr, bool check_stack = false) {
         const auto mode = (instr >> 3) & 7;
-        const auto reg = instr & 7;
+        const auto regno = instr & 7;
 
         Operand result = {0, OPERAND_DATA} ;
 
@@ -194,51 +207,51 @@ class KB11 {
             case 0: // Mode 0: Registers don't have a virtual address so trap!
                 trap(INTBUS);
             case 1: // Mode 1: (R)
-                result.operand = R[reg] ;
+                result.operand = RR[REG(regno)] ;
                 return result ;
             case 2: // Mode 2: (R)+ including immediate operand #x
-                result.operand = R[reg];
-                if (check_stack && reg == 6) {
-                    checkStackLimit(R[6]) ;
+                result.operand = RR[REG(regno)];
+                if (check_stack && regno == 6) {
+                    checkStackLimit(RR[6]) ;
                 }
-                R[reg] += (reg >= 6) ? 2 : len;
-                result.operandType = reg < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
+                RR[REG(regno)] += (regno >= 6) ? 2 : len;
+                result.operandType = regno < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
                 return result ;
             case 3: // Mode 3: @(R)+
-                result.operand = R[reg];
-                if (check_stack && reg == 6) {
-                    checkStackLimit(R[6]) ;
+                result.operand = RR[REG(regno)];
+                if (check_stack && regno == 6) {
+                    checkStackLimit(RR[6]) ;
                 }
-                R[reg] += 2;
+                RR[REG(regno)] += 2;
                 result.operand = read16(result.operand, den);
-                result.operandType = reg < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
+                result.operandType = regno < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
                 return result ;
             case 4: // Mode 4: -(R)
-                R[reg] -= (reg >= 6) ? 2 : len;
-                if (check_stack && reg == 6) {
-                    checkStackLimit(R[6]) ;
+                RR[REG(regno)] -= (regno >= 6) ? 2 : len;
+                if (check_stack && regno == 6) {
+                    checkStackLimit(RR[6]) ;
                 }
-                result.operand = R[reg];
+                result.operand = RR[REG(regno)];
                 return result;
             case 5: // Mode 5: @-(R)
-                R[reg] -= 2;
-                if (check_stack && reg == 6) {
-                    checkStackLimit(R[6]) ;
+                RR[REG(regno)] -= 2;
+                if (check_stack && regno == 6) {
+                    checkStackLimit(RR[6]) ;
                 }
-                result.operand = R[reg];
+                result.operand = RR[REG(regno)];
                 result.operand = read16(result.operand, den);
                 return result;
             case 6: // Mode 6: d(R)
                 result.operand = fetch16();
-                result.operand = result.operand + R[reg];
-                if (check_stack && reg == 6) {
+                result.operand = result.operand + RR[REG(regno)];
+                if (check_stack && regno == 6) {
                     checkStackLimit(result.operand) ;
                 }
                 return result;
             default: // 7 Mode 7: @d(R)
                 result.operand = fetch16();
-                result.operand = result.operand + R[reg];
-                if (check_stack && reg == 6) {
+                result.operand = result.operand + RR[REG(regno)];
+                if (check_stack && regno == 6) {
                     checkStackLimit(result.operand) ;
                 }
                 result.operand = read16(result.operand, den);
@@ -251,7 +264,7 @@ class KB11 {
 
         // If register mode just get register value
         if (!(instr & 07000)) {
-            return R[(instr >> 6) & 7] & max<len>();
+            return RR[REG((instr >> 6) & 7)] & max<len>();
         }
 
         const Operand op = fetchOperand<len>(instr >> 6);
@@ -269,17 +282,43 @@ class KB11 {
     }
 
     constexpr inline void branch(const u16 instr) {
-        if (instr & 0x80) {
-            R[7] += (instr | 0xff00) << 1;
+        if (instr & 0200) {
+            RR[7] += (instr | 0177400) << 1;
         } else {
-            R[7] += (instr & 0xff) << 1;
+            RR[7] += (instr & 0377) << 1;
         }
     }
 
-    constexpr inline void writePSW(const u16 psw, const bool clear_t = true) {
-        stackpointer[currentmode()] = R[6];
-        PSW = clear_t ? (psw & ~PSW_BIT_T) : psw ;
-        R[6] = stackpointer[currentmode()];
+    /**
+     * Programs operating at outer levels (Supervisor and User)
+     *   are inhibited from changing bits 5-7 (the Processor's Priority).
+     * They are also restricted in their treatment of
+     *    bits 15, 14 (Current Mode), bits 13,
+     *    12 (Previous Mode), and bit 11 Register Set);
+     *    these bits may only be set, they are only cleared by an interrupt or trap.
+     * 
+     *    bits 15,14 protection clashed with XXDP CKBHB0 test
+     */
+    constexpr inline void writePSW(const u16 psw, const bool rti_rtp = false) {
+        const u16 mode = currentmode() ;
+        stackpointer[mode] = RR[6] ;
+
+        u16 newpsw = psw & ~PSW_BIT_UNUSED ;
+
+        if (!rti_rtp) {
+            newpsw &= ~PSW_BIT_T ;
+        }
+
+        if (mode) {
+            newpsw = (newpsw & ~PSW_BIT_PRIORITY) | (PSW & PSW_BIT_PRIORITY) ;
+            // newpsw |= ((PSW & PSW_BIT_MODE) | (psw & PSW_BIT_MODE)) ;
+            // newpsw |= ((PSW & PSW_BIT_PRIV_MODE) | (psw & PSW_BIT_PRIV_MODE)) ;
+            newpsw |= ((PSW & PSW_BIT_REG_SET) | (psw & PSW_BIT_REG_SET)) ;
+        }
+
+        PSW = newpsw ;
+
+        RR[6] = stackpointer[currentmode()];
     }
 
     // kernelmode pushes the current processor mode and switchs to kernel.
@@ -292,10 +331,10 @@ class KB11 {
 
         if (rflag) {
             if constexpr (l == 2) {
-                return R[a & 7];
+                return RR[REG(a & 7)];
             }
             else {
-                return R[a & 7] & 0xFF;
+                return RR[REG(a & 7)] & 0xFF;
             }
         }
         if constexpr (l == 2) {
@@ -312,12 +351,12 @@ class KB11 {
         auto vl = v;
 
         if (rflag) {
-            auto r = a & 7;
+            auto r = REG(a & 7);
             if constexpr (l == 2) {
-                R[r] = vl;
+                RR[r] = vl;
             } else {
-                R[r] &= 0xFF00;
-                R[r] |= vl & 0xFF;
+                RR[r] &= 0xFF00;
+                RR[r] |= vl & 0xFF;
             }
             return;
         }
@@ -418,12 +457,12 @@ class KB11 {
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage);
         auto uval = (max<l>() ^ src) & dst;
-        write<l>(op.operand, uval, dpage);
         PSW &= (PSW_MASK_COND | PSW_BIT_C);
         setZ(uval == 0);
         if (uval & msb<l>()) {
             PSW |= PSW_BIT_N;
         }
+        write<l>(op.operand, uval, dpage);
     }
 
     template <auto l> void BIS(const u16 instr) {
@@ -463,7 +502,6 @@ class KB11 {
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = ~read<l>(op.operand, dpage);
-        write<l>(op.operand, dst, dpage);
         PSW &= PSW_MASK_COND;
         if ((dst & msb<l>())) {
             PSW |= PSW_BIT_N;
@@ -472,6 +510,7 @@ class KB11 {
             PSW |= PSW_BIT_Z;
         }
         PSW |= PSW_BIT_C;
+        write<l>(op.operand, dst, dpage);
     }
 
     // DEC 0053DD, DECB 1053DD
@@ -483,11 +522,11 @@ class KB11 {
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto oval = read<l>(op.operand, dpage) & max<l>();
         const auto uval = (read<l>(op.operand, dpage) - 1) & max<l>();
-        write<l>(op.operand, uval, dpage);
         setNZ<l>(uval);
         if (oval == msb<l>()) {
             PSW |= PSW_BIT_V;
         }
+        write<l>(op.operand, uval, dpage);
     }
 
     // NEG 0054DD, NEGB 1054DD
@@ -498,7 +537,6 @@ class KB11 {
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = (-read<l>(op.operand, dpage)) & max<l>();
-        write<l>(op.operand, dst, dpage);
         PSW &= PSW_MASK_COND;
         if (dst & msb<l>()) {
             PSW |= PSW_BIT_N;
@@ -511,6 +549,7 @@ class KB11 {
         if (dst == msb<l>()) {
             PSW |= PSW_BIT_V;
         }
+        write<l>(op.operand, dst, dpage);
     }
 
     template <auto l> void _ADC(const u16 instr) {
@@ -521,7 +560,6 @@ class KB11 {
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         auto uval = read<l>(op.operand, dpage);
         if (PSW & PSW_BIT_C) {
-            write<l>(op.operand, (uval + 1) & max<l>(), dpage);
             PSW &= PSW_MASK_COND;
             if ((uval + 1) & msb<l>()) {
                 PSW |= PSW_BIT_N;
@@ -535,6 +573,7 @@ class KB11 {
             if (uval == 0177777) {
                 PSW |= PSW_BIT_C;
             }
+            write<l>(op.operand, (uval + 1) & max<l>(), dpage);
         }
         else {
             PSW &= PSW_MASK_COND;
@@ -580,7 +619,6 @@ class KB11 {
         if (PSW & PSW_BIT_C) {
             result |= msb<l>();
         }
-        write<l>(op.operand, result, dpage);
         PSW &= PSW_MASK_COND;
         if (dst & 1) {
             // shift lsb into carry
@@ -595,6 +633,7 @@ class KB11 {
         if (!(PSW & PSW_BIT_C) ^ !(PSW & PSW_BIT_N)) {
             PSW |= PSW_BIT_V;
         }
+        write<l>(op.operand, result, dpage);
     }
 
     template <auto l> void ROL(const u16 instr) {
@@ -675,8 +714,8 @@ class KB11 {
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage) + 1;
-        write<l>(op.operand, dst, dpage);
         setNZV<l>(dst);
+        write<l>(op.operand, dst, dpage);
     }
 
     // BIT 03SSDD, BITB 13SSDD
@@ -708,7 +747,7 @@ class KB11 {
         const auto src = SS<len>(instr);
         if (!(instr & 0x38) && (len == 1)) {
             // Special case: movb sign extends register to word size
-            R[instr & 7] = src & 0x80 ? 0xff00 | src : src;
+            RR[REG(instr & 7)] = src & 0x80 ? 0xff00 | src : src;
             setNZ<len>(src);
             return;
         }

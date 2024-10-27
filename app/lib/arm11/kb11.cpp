@@ -37,7 +37,7 @@ void KB11::reset(u16 start) {
         unibus.write16(BOOTMON_BASE + (i * 2), bootmon[i]);
     }
 
-    R[7] = start;
+    RR[7] = start;
     stacklimit = 0400 ;
     switchregister = 0;
     unibus.reset(false);
@@ -82,6 +82,9 @@ void KB11::write16(const u16 va, const u16 v, bool d) {
         case 0777774:
             stacklimit = v & 0177400 ;
             break;
+        case 0777770:
+            microbrreg = v ;
+            break ;
         case 0777570:
             displayregister = v;
             break;
@@ -100,7 +103,6 @@ void KB11::ADD(const u16 instr) {
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     const auto dst = read<2>(op.operand, dpage);
     const auto sum = src + dst;
-    write<2>(op.operand, sum, dpage);
     PSW &= 0xFFF0;
     setNZ<2>(sum);
     if (((~src ^ dst) & (src ^ sum)) & 0x8000) {
@@ -109,6 +111,7 @@ void KB11::ADD(const u16 instr) {
     if ((s32(src) + s32(dst)) > 0xFFFF) {
         PSW |= PSW_BIT_C;
     }
+    write<2>(op.operand, sum, dpage);
 }
 
 // SUB 16SSDD
@@ -122,7 +125,6 @@ void KB11::SUB(const u16 instr) {
     const auto val2 = read<2>(op.operand, dpage);
     const auto uval = (val2 - val1) & 0xFFFF;
     PSW &= 0xFFF0;
-    write<2>(op.operand, uval, dpage);
     setNZ<2>(uval);
     if (((val1 ^ val2) & (~val1 ^ uval)) & 0x8000) {
         PSW |= PSW_BIT_V;
@@ -130,12 +132,13 @@ void KB11::SUB(const u16 instr) {
     if (val1 > val2) {
         PSW |= PSW_BIT_C;
     }
+    write<2>(op.operand, uval, dpage);
 }
 
 // MUL 070RSS
 void KB11::MUL(const u16 instr) {
-	const auto reg = (instr >> 6) & 7;
-	s32 val1 = R[reg];
+	const auto reg = REG((instr >> 6) & 7);
+	s32 val1 = RR[reg];
 	if (val1 & 0x8000) {
 		val1 = -((0xFFFF ^ val1) + 1);
 	}
@@ -147,8 +150,8 @@ void KB11::MUL(const u16 instr) {
 		val2 = -((0xFFFF ^ val2) + 1);
 	}
 	int sval = val1 * val2;
-	R[reg] = sval >> 16;
-	R[reg | 1] = sval & 0xFFFF;
+	RR[reg] = sval >> 16;
+	RR[reg | 1] = sval & 0xFFFF;
 	PSW &= 0xFFF0;
 	if (sval < 0) {
 		PSW |= PSW_BIT_N;
@@ -162,8 +165,8 @@ void KB11::MUL(const u16 instr) {
 }
 
 void KB11::DIV(const u16 instr) {
-	const auto reg = (instr >> 6) & 7;
-	const s32 val1 = (R[reg] << 16) | (R[reg | 1]);
+	const auto reg = REG((instr >> 6) & 7);
+	const s32 val1 = (RR[reg] << 16) | (RR[reg | 1]);
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 	s32 val2 = read<2>(op.operand, dpage);
@@ -178,19 +181,19 @@ void KB11::DIV(const u16 instr) {
 		PSW |= PSW_BIT_V;
 		return;
 	}
-	R[reg] = (val1 / val2) & 0xFFFF;
-	R[reg | 1] = (val1 % val2) & 0xFFFF;
-	if (R[reg] == 0) {
+	RR[reg] = (val1 / val2) & 0xFFFF;
+	RR[reg | 1] = (val1 % val2) & 0xFFFF;
+	if (RR[reg] == 0) {
 		PSW |= PSW_BIT_Z;
 	}
-	if (R[reg] & 0100000) {
+	if (RR[reg] & 0100000) {
 		PSW |= PSW_BIT_N;
 	}
 }
 
 void KB11::ASH(const u16 instr) {
-	const auto reg = (instr >> 6) & 7;
-	const auto val1 = R[reg];
+	const auto reg = REG((instr >> 6) & 7);
+	const auto val1 = RR[reg];
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 	auto val2 = read<2>(op.operand, dpage) & 077;
@@ -218,7 +221,7 @@ void KB11::ASH(const u16 instr) {
 			PSW |= PSW_BIT_C;
 	}
 	sval &= 0xffff;
-	R[reg & 7] = sval;
+	RR[reg] = sval;
 	setZ(sval == 0);
 	if (sval & 0100000) {
 		PSW |= PSW_BIT_N;
@@ -226,8 +229,8 @@ void KB11::ASH(const u16 instr) {
 }
 
 void KB11::ASHC(const u16 instr) {
-	const auto reg = (instr >> 6) & 7;
-	const auto val1 = ((u32)(R[reg]) << 16) | R[reg | 1];
+	const auto reg = REG((instr >> 6) & 7) ;
+	const auto val1 = ((u32)(RR[reg]) << 16) | RR[reg | 1];
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 	auto val2 = read<2>(op.operand, dpage) & 077;
@@ -251,8 +254,8 @@ void KB11::ASHC(const u16 instr) {
 		if ((val1 & msk) && val2)
 			PSW |= PSW_BIT_C;
 	}
-	R[reg & 7] = (sval >> 16) & 0xFFFF;
-	R[(reg & 7) | 1] = sval & 0xFFFF;
+	RR[reg] = (sval >> 16) & 0xFFFF;
+	RR[reg | 1] = sval & 0xFFFF;
 	setZ((sval & 0xffffffff) == 0);
 	if (sval & 0x80000000)
 		PSW |= PSW_BIT_N;
@@ -261,7 +264,7 @@ void KB11::ASHC(const u16 instr) {
 
 // XOR 074RDD
 void KB11::XOR(const u16 instr) {
-    const auto reg = R[(instr >> 6) & 7];
+    const auto reg = RR[REG((instr >> 6) & 7)];
     Operand op = DA<2>(instr) ;
     if (stackTrap == STACK_TRAP_RED) {
         return ;
@@ -275,10 +278,10 @@ void KB11::XOR(const u16 instr) {
 // SOB 077RNN
 
 void KB11::SOB(const u16 instr) {
-    const auto reg = (instr >> 6) & 7;
-    R[reg]--;
-    if (R[reg]) {
-        R[7] -= (instr & 077) << 1;
+    const auto reg = REG((instr >> 6) & 7);
+    RR[reg]--;
+    if (RR[reg]) {
+        RR[7] -= (instr & 077) << 1;
     }
 }
 
@@ -290,7 +293,7 @@ void KB11::FIS(const u16 instr)
     };
     // u32 arg1, arg2;
     fltint bfr;
-    u16 adr = R[instr & 7];      // Base address from specfied reg
+    u16 adr = RR[REG(instr & 7)];      // Base address from specfied reg
     float op1, op2;
 
     bfr.xint = read<2>(adr + 6) | (read<2>(adr + 4) << 16);
@@ -316,7 +319,7 @@ void KB11::FIS(const u16 instr)
         bfr.xflt = (op1 / op2) * 4.0f;
         break;
     }
-    R[instr & 7] += 4;
+    RR[REG(instr & 7)] += 4;
     if (bfr.xflt == 0.0)
         PSW |= PSW_BIT_Z;
     if (bfr.xflt < 0.0)
@@ -362,10 +365,10 @@ void KB11::JSR(const u16 instr) {
     if (stackTrap == STACK_TRAP_RED) {
         return ;
     }
-    const auto reg = (instr >> 6) & 7;
-    push(R[reg]);
-    R[reg] = R[7];
-    R[7] = op.operand;
+    const auto reg = REG((instr >> 6) & 7);
+    push(RR[reg]);
+    RR[reg] = RR[7];
+    RR[7] = op.operand;
 }
 
 // JMP 0001DD
@@ -374,24 +377,24 @@ void KB11::JMP(const u16 instr) {
         // Registers don't have a virtual address so trap!
         trap(INTBUS);
     } else {
-        R[7] = DA<2>(instr).operand ;
+        RR[7] = DA<2>(instr).operand ;
     }
 }
 
 // MARK 0064NN
 void KB11::MARK(const u16 instr) {
-    R[6] = R[7] + ((instr & 077) << 1);
-    R[7] = R[5];
-    R[5] = pop();
+    RR[6] = RR[7] + ((instr & 077) << 1);
+    RR[7] = RR[REG(5)];
+    RR[REG(5)] = pop();
 }
 
 // MFPI 0065SS
 void KB11::MFPI(const u16 instr) {
     u16 uval;
     if (!(instr & 0x38)) {
-        const auto reg = instr & 7;
+        const auto reg = REG(instr & 7);
         if ((reg != 6) || (currentmode() == previousmode())) {
-            uval = R[reg];
+            uval = RR[reg];
         } else {
             uval = stackpointer[previousmode()];
         }
@@ -407,9 +410,9 @@ void KB11::MFPI(const u16 instr) {
 void KB11::MTPI(const u16 instr) {
     const auto uval = pop();
     if (!(instr & 0x38)) {
-        const auto reg = instr & 7;
+        const auto reg = REG(instr & 7);
         if ((reg != 6) || (currentmode() == previousmode())) {
-            R[reg] = uval;
+            RR[reg] = uval;
         } else {
             stackpointer[previousmode()] = uval;
         }
@@ -425,9 +428,9 @@ void KB11::MTPI(const u16 instr) {
 
 // RTS 00020R
 void KB11::RTS(const u16 instr) {
-    const auto reg = instr & 7;
-    R[7] = R[reg];
-    R[reg] = pop();
+    const auto reg = REG(instr & 7);
+    RR[7] = RR[reg];
+    RR[reg] = pop();
 }
 
 // MFPT 000007
@@ -437,7 +440,7 @@ void KB11::MFPT() {
 
 // RTI 000004
 void KB11::RTI() {
-    R[7] = pop() ;
+    RR[7] = pop() ;
     auto psw = pop() ;
     const u16 mode = currentmode() ;
     if (mode == 1) {
@@ -446,14 +449,14 @@ void KB11::RTI() {
         psw = (psw & 0174000) | (PSW & 0174360) ;
     }
 
-    writePSW(psw, false) ;
+    writePSW(psw, true) ;
 }
 
 // RTT 000006
 void KB11::RTT() {
     wasRTT = true ;
 
-    R[7] = pop() ;
+    RR[7] = pop() ;
     auto psw = pop() ;
     const u16 mode = currentmode() ;
     if (mode == 1) {
@@ -462,12 +465,13 @@ void KB11::RTT() {
         psw = (psw & 0174000) | (PSW & 0174360) ;
     }
 
-    writePSW(psw, false) ;
+    writePSW(psw, true) ;
 }
 
 void KB11::WAIT() {
-    if (currentmode())
-        return;
+    if (currentmode()) {
+        return ;
+    }
     wtstate = true;
 }
 
@@ -519,7 +523,7 @@ void KB11::SXT(const u16 instr) {
 }
 
 void KB11::step() {
-    PC = R[7];
+    PC = RR[7];
     rflag = 0;
     const auto instr = fetch16();
     if (!(mmu.SR[0] & 0160000))
@@ -943,8 +947,8 @@ void KB11::trapat(u16 vec) {
     auto npsw = unibus.read16(mmu.decode<false>(vec, 0) + 2);
     writePSW(npsw | (currentmode() << 12));
     push(opsw);
-    push(R[7]);
-    R[7] = unibus.read16(mmu.decode<false>(vec, 0));       // Get from K-apace
+    push(RR[7]);
+    RR[7] = unibus.read16(mmu.decode<false>(vec, 0));       // Get from K-apace
     wtstate = false;
 }
 
@@ -957,8 +961,8 @@ static const char *modnames[4] = {
 } ;
 
 void KB11::ptstate() {
-    Console::get()->printf("    R0 %06o R1 %06o R2 %06o R3 %06o\r\n", R[0], R[1], R[2], R[3]);
-    Console::get()->printf("    R4 %06o R5 %06o R6 %06o PS %06o\r\n", R[4], R[5], R[6], PSW);
+    Console::get()->printf("    R%d %06o R%d %06o R%d %06o R%d %06o\r\n", REGNAME(0), RR[REG(0)], REGNAME(1), RR[REG(1)], REGNAME(2), RR[REG(2)], REGNAME(3), RR[REG(3)]);
+    Console::get()->printf("    R%d %06o R%d %06o R6 %06o PS %06o\r\n", REGNAME(4), RR[REG(4)], REGNAME(5), RR[REG(5)], RR[6], PSW);
     
     Console::get()->printf("    PSW [%s%s%s%s%s",
         modnames[currentmode()],
@@ -966,9 +970,9 @@ void KB11::ptstate() {
         Z() ? "Z" : "-",
         V() ? "V" : "-",
         C() ? "C" : "-");
-    Console::get()->printf("]\r\n    instr %06o: %06o   ", R[7], read16(R[7]));
+    Console::get()->printf("]\r\n    instr %06o: %06o   ", RR[7], read16(RR[7]));
 
-    disasm(R[7]);
+    disasm(RR[7]);
 
     Console::get()->printf("\r\n");
 }

@@ -239,7 +239,7 @@ int cm = 0;                                           /* *** Current mode ***/
 
 static int FEC, FEA, FPS;
 static int N, Z, V, C;
-static u16* R = cpu.R;
+static u16* RR = cpu.RR;
 int dsenable = 0, isenable = 0;
 
 fpac_t zero_fac = { 0, 0 };
@@ -343,20 +343,20 @@ void fp11(int IR)
             break;
 
         case 1:                                         /* LDFPS */
-            dst = (dstspec <= 07) ? R[dstspec] : ReadW(GeteaFW(dstspec));
+            dst = (dstspec <= 07) ? RR[cpu.REG(dstspec)] : ReadW(GeteaFW(dstspec));
             FPS = dst & FPS_RW;
             break;
 
         case 2:                                         /* STFPS */
             FPS = FPS & FPS_RW;
             if (dstspec <= 07)
-                R[dstspec] = FPS;
+                RR[cpu.REG(dstspec)] = FPS;
             else WriteW(FPS, GeteaFW(dstspec));
             break;
 
         case 3:                                         /* STST */
             if (dstspec <= 07)
-                R[dstspec] = FEC;
+                RR[cpu.REG(dstspec)] = FEC;
             else WriteI((FEC << 16) | FEA, GeteaFP(dstspec, LONG),
                 dstspec, LONG);
             break;
@@ -456,7 +456,7 @@ void fp11(int IR)
         break;
 
     case 015:                                           /* LDEXP */
-        dst = (dstspec <= 07) ? R[dstspec] : ReadW(GeteaFW(dstspec));
+        dst = (dstspec <= 07) ? RR[cpu.REG(dstspec)] : ReadW(GeteaFW(dstspec));
         F_LOAD(qdouble, FR[ac], fac);
         fac.h = (fac.h & ~FP_EXP) | (((dst + FP_BIAS) & FP_M_EXP) << FP_V_EXP);
         newV = 0;
@@ -483,14 +483,14 @@ void fp11(int IR)
         C = 0;
         FPS = (FPS & ~FPS_CC) | (N << PSW_V_N) | (Z << PSW_V_Z);
         if (dstspec <= 07)
-            R[dstspec] = dst;
+            RR[cpu.REG(dstspec)] = dst;
         else WriteW(dst, GeteaFW(dstspec));
         break;
 
     case 016:                                           /* LDCif */
         leni = FPS & FPS_L ? LONG : WORD;
         if (dstspec <= 07)
-            fac.l = R[dstspec] << 16;
+            fac.l = RR[cpu.REG(dstspec)] << 16;
         else fac.l = ReadI(GeteaFP(dstspec, leni), dstspec, leni);
         fac.h = 0;
         if (fac.l) {
@@ -550,7 +550,7 @@ void fp11(int IR)
         FPS = (FPS & ~FPS_CC) | (N << PSW_V_N) |
             (Z << PSW_V_Z) | (C << PSW_V_C);
         if (dstspec <= 07)
-            R[dstspec] = (dst >> 16) & 0177777;
+            RR[cpu.REG(dstspec)] = (dst >> 16) & 0177777;
         else WriteI(dst, GeteaFP(dstspec, leni), dstspec, leni);
         break;
 
@@ -614,7 +614,7 @@ void fp11(int IR)
         int val = FPCHG_GETVAL(fp_change);               /* get value */
         if (val & 020)                                      /* negative? */
             val = val | (-16);                              /* ensure proper sext */
-        R[reg] = (R[reg] + val) & 0177777;                  /* commit change */
+        RR[cpu.REG(reg)] = (RR[cpu.REG(reg)] + val) & 0177777;                  /* commit change */
     }
     cpu.PSW = (cpu.PSW & (0xfff0)) | (N << 3) | (Z << 2) | (V << 1) | C;
     if (ftrap)
@@ -634,28 +634,28 @@ int GeteaFW(int spec)
 
     default:                                            /* can't get here */
     case 1:                                             /* (R) */
-        return (R[reg] | ds);
+        return (RR[cpu.REG(reg)] | ds);
 
     case 2:                                             /* (R)+ */
-        adr = R[reg];                                   /* post increment */
+        adr = RR[cpu.REG(reg)];                                   /* post increment */
         fp_reg_change(2, reg);                         /* update */
         return (adr | ds);
 
     case 3:                                             /* @(R)+ */
-        adr = R[reg];                                   /* post increment */
+        adr = RR[cpu.REG(reg)];                                   /* post increment */
         fp_reg_change(2, reg);                         /* update */
         adr = ReadW(adr | ds);
         return (adr | dsenable);
 
     case 4:                                             /* -(R) */
-        adr = (R[reg] - 2) & 0177777;                   /* predecrement */
+        adr = (RR[cpu.REG(reg)] - 2) & 0177777;                   /* predecrement */
         fp_reg_change(-2, reg);                        /* update */
         if ((reg == 6) && (cm == MD_KER) && (adr < (STKLIM + STKL_Y)))
             set_stack_trap(adr);
         return (adr | ds);
 
     case 5:                                             /* @-(R) */
-        adr = (R[reg] - 2) & 0177777;                   /* predecrement */
+        adr = (RR[cpu.REG(reg)] - 2) & 0177777;                   /* predecrement */
         fp_reg_change(-2, reg);                        /* update */
         if ((reg == 6) && (cm == MD_KER) && (adr < (STKLIM + STKL_Y)))
             set_stack_trap(adr);
@@ -663,14 +663,14 @@ int GeteaFW(int spec)
         return (adr | dsenable);
 
     case 6:                                             /* d(r) */
-        adr = ReadW(cpu.R[7] | isenable);
-        cpu.R[7] = (cpu.R[7] + 2) & 0177777;
-        return (((R[reg] + adr) & 0177777) | dsenable);
+        adr = ReadW(cpu.RR[7] | isenable);
+        cpu.RR[7] = (cpu.RR[7] + 2) & 0177777;
+        return (((RR[reg] + adr) & 0177777) | dsenable);
 
     case 7:                                             /* @d(R) */
-        adr = ReadW(cpu.R[7] | isenable);
-        cpu.R[7] = (cpu.R[7] + 2) & 0177777;
-        adr = ReadW(((R[reg] + adr) & 0177777) | dsenable);
+        adr = ReadW(cpu.RR[7] | isenable);
+        cpu.RR[7] = (cpu.RR[7] + 2) & 0177777;
+        adr = ReadW(((RR[reg] + adr) & 0177777) | dsenable);
         return (adr | dsenable);
     }                                               /* end switch */
 }
@@ -708,30 +708,30 @@ int GeteaFP(int spec, int len)
         return 0;
 
     case 1:                                             /* (R) */
-        return (R[reg] | ds);
+        return (RR[cpu.REG(reg)] | ds);
 
     case 2:                                             /* (R)+ */
-        adr = R[reg];                                   /* post increment */
+        adr = RR[cpu.REG(reg)];                                   /* post increment */
         if (reg == 7)                                   /* # is always length 2 */
             len = 2;
         fp_reg_change(len, reg);                       /* update */
         return (adr | ds);
 
     case 3:                                             /* @(R)+ */
-        adr = R[reg];                                   /* post increment */
+        adr = RR[cpu.REG(reg)];                                   /* post increment */
         fp_reg_change(2, reg);                         /* update */
         adr = ReadW(adr | ds);
         return (adr | dsenable);
 
     case 4:                                             /* -(R) */
-        adr = (R[reg] - len) & 0177777;                 /* predecrement */
+        adr = (RR[cpu.REG(reg)] - len) & 0177777;                 /* predecrement */
         fp_reg_change(-len, reg);                      /* update */
         if ((reg == 6) && (cm == MD_KER) && (adr < (STKLIM + STKL_Y)))
             set_stack_trap(adr);
         return (adr | ds);
 
     case 5:                                             /* @-(R) */
-        adr = (R[reg] - 2) & 0177777;                   /* predecrement */
+        adr = (RR[cpu.REG(reg)] - 2) & 0177777;                   /* predecrement */
         fp_reg_change(-2, reg);                        /* update */
         if ((reg == 6) && (cm == MD_KER) && ((adr - 2) < (STKLIM + STKL_Y)))
             set_stack_trap(adr);
@@ -739,14 +739,14 @@ int GeteaFP(int spec, int len)
         return (adr | dsenable);
 
     case 6:                                             /* d(r) */
-        adr = ReadW(cpu.R[7] | isenable);
-        cpu.R[7] = (cpu.R[7] + 2) & 0177777;
-        return (((R[reg] + adr) & 0177777) | dsenable);
+        adr = ReadW(cpu.RR[7] | isenable);
+        cpu.RR[7] = (cpu.RR[7] + 2) & 0177777;
+        return (((RR[cpu.REG(reg)] + adr) & 0177777) | dsenable);
 
     case 7:                                             /* @d(R) */
-        adr = ReadW(cpu.R[7] | isenable);
-        cpu.R[7] = (cpu.R[7] + 2) & 0177777;
-        adr = ReadW(((R[reg] + adr) & 0177777) | dsenable);
+        adr = ReadW(cpu.RR[7] | isenable);
+        cpu.RR[7] = (cpu.RR[7] + 2) & 0177777;
+        adr = ReadW(((RR[cpu.REG(reg)] + adr) & 0177777) | dsenable);
         return (adr | dsenable);
     }                                               /* end switch */
 
@@ -769,7 +769,7 @@ int GeteaFP(int spec, int len)
 
 void fp_reg_change(int len, int reg)
 {
-    R[reg] = (R[reg] + len) & 0177777;                  /* Commit immediately */
+    RR[cpu.REG(reg)] = (RR[cpu.REG(reg)] + len) & 0177777;                  /* Commit immediately */
     return;
     // MMR1 set in primary cpu loop.
     //if (CPUT(CPUT_J)) {                                /* J11? */

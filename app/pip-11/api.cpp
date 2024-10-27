@@ -57,35 +57,35 @@ void API::processResponse(ApiCommand command, u32 arg0, u16 arg1) {
                     gprintf("API: unknown cpu state 0%06o", arg0) ;
                     break ;
             }
-            this->sendCommand(API_COMMAND_CPU_STATUS, cpu.cpuStatus, cpu.R[7]) ;
+            this->sendCommand(API_COMMAND_CPU_STATUS, cpu.cpuStatus, cpu.RR[7]) ;
             break;
 
         case API_COMMAND_EXAMINE: {
                 u16 data = 0 ;
                 switch (arg0) {
                     case 0177707:
-                        data = cpu.R[7] ;
+                        data = cpu.RR[7] ;
                         break ;
                     case 0177706:
-                        data = cpu.R[6] ;
+                        data = cpu.RR[6] ;
                         break ;
                     case 0177705:
-                        data = cpu.R[5] ;
+                        data = cpu.RR[5] ;
                         break ;
                     case 0177704:
-                        data = cpu.R[4] ;
+                        data = cpu.RR[4] ;
                         break ;
                     case 0177703:
-                        data = cpu.R[3] ;
+                        data = cpu.RR[3] ;
                         break ;
                     case 0177702:
-                        data = cpu.R[2] ;
+                        data = cpu.RR[2] ;
                         break ;
                     case 0177701:
-                        data = cpu.R[1] ;
+                        data = cpu.RR[1] ;
                         break ;
                     case 0177700:
-                        data = cpu.R[0] ;
+                        data = cpu.RR[0] ;
                         break ;
                     case 0177570:
                         data = cpu.displayregister ;
@@ -102,29 +102,29 @@ void API::processResponse(ApiCommand command, u32 arg0, u16 arg1) {
         case API_COMMAND_DEPOSIT:
             switch (arg0) {
                     case 0177707:
-                        cpu.R[7] = arg1 ;
+                        cpu.RR[7] = arg1 ;
                         cpu.wtstate = false ;
                         break ;
                     case 0177706:
-                        cpu.R[6] = arg1 ;
+                        cpu.RR[6] = arg1 ;
                         break ;
                     case 0177705:
-                        cpu.R[5] = arg1 ;
+                        cpu.RR[5] = arg1 ;
                         break ;
                     case 0177704:
-                        cpu.R[4] = arg1 ;
+                        cpu.RR[4] = arg1 ;
                         break ;
                     case 0177703:
-                        cpu.R[3] = arg1 ;
+                        cpu.RR[3] = arg1 ;
                         break ;
                     case 0177702:
-                        cpu.R[2] = arg1 ;
+                        cpu.RR[2] = arg1 ;
                         break ;
                     case 0177701:
-                        cpu.R[1] = arg1 ;
+                        cpu.RR[1] = arg1 ;
                         break ;
                     case 0177700:
-                        cpu.R[0] = arg1 ;
+                        cpu.RR[0] = arg1 ;
                         break ;
                 case 0177570:
                     cpu.switchregister = arg1 ;
