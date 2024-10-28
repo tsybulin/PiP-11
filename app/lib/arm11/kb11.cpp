@@ -149,19 +149,13 @@ void KB11::MUL(const u16 instr) {
 	if (val2 & 0x8000) {
 		val2 = -((0xFFFF ^ val2) + 1);
 	}
-	int sval = val1 * val2;
+	s32 sval = val1 * val2;
 	RR[reg] = sval >> 16;
 	RR[reg | 1] = sval & 0xFFFF;
-	PSW &= 0xFFF0;
-	if (sval < 0) {
-		PSW |= PSW_BIT_N;
-	}
-	if (sval == 0) {
-		PSW |= PSW_BIT_Z;
-	}
-	if ((sval < -(1 << 15)) || (sval >= ((1L << 15) - 1))) {
-		PSW |= PSW_BIT_C;
-	}
+	PSW &= PSW_MASK_COND ;
+    setPSWbit(PSW_BIT_N, sval < 0) ;
+    setPSWbit(PSW_BIT_Z, sval == 0) ;
+    setPSWbit(PSW_BIT_C, (sval > 077777) || (sval < -0100000)) ;
 }
 
 void KB11::DIV(const u16 instr) {
