@@ -307,17 +307,17 @@ class KB11 {
      * 
      *    bits 15,14 protection clashed with XXDP CKBHB0 test
      */
-    constexpr inline void writePSW(const u16 psw, const bool rti_rtp = false) {
+    constexpr inline void writePSW(const u16 psw, const bool istrap = false) {
         const u16 mode = currentmode() ;
         stackpointer[mode] = RR[6] ;
 
         u16 newpsw = psw & ~PSW_BIT_UNUSED ;
 
-        if (!rti_rtp) {
+        if (!istrap) {
             newpsw &= ~PSW_BIT_T ;
         }
 
-        if (mode) {
+        if (mode && !istrap) {
             newpsw = (newpsw & ~PSW_BIT_PRIORITY) | (PSW & PSW_BIT_PRIORITY) ;
             // newpsw |= ((PSW & PSW_BIT_MODE) | (psw & PSW_BIT_MODE)) ;
             // newpsw |= ((PSW & PSW_BIT_PRIV_MODE) | (psw & PSW_BIT_PRIV_MODE)) ;

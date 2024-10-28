@@ -546,7 +546,7 @@ void KB11::step() {
                             switch (instr) {
                                 case 0: // HALT 000000
                                     if (currentmode()) {
-                                        trap(INTINVAL);
+                                        trap(INTBUS);
                                     }
                                     // Console::get()->printf(" HALT:\r\n");
                                     // printstate();
@@ -588,8 +588,9 @@ void KB11::step() {
                                     RTS(instr);
                                     return;
                                 case 3: // SPL 00023N
-                                    if (currentmode())
-                                        trap(INTINVAL);
+                                    if (currentmode()) {
+                                        return ;
+                                    }
                                     PSW = ((PSW & 0177037) | ((instr & 7) << 5));
                                     return;
                                 case 4: // CLR CC 00024C Part 1 without N
@@ -952,7 +953,7 @@ void KB11::trapat(u16 vec) {
     //  if (vec == 0220) print = true;
     auto opsw = PSW;
     auto npsw = unibus.read16(mmu.decode<false>(vec, 0) + 2);
-    writePSW(npsw | (currentmode() << 12));
+    writePSW(npsw | (currentmode() << 12), true);
     push(opsw);
     push(RR[7]);
     RR[7] = unibus.read16(mmu.decode<false>(vec, 0));       // Get from K-apace
