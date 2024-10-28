@@ -110,6 +110,8 @@ class KB11 {
                 return PSW;
             case 0777774:
                 return stacklimit;
+            case 0777772:
+                return pirqr ;
             case 0777770:
                 return microbrreg ;
             case 0777570:
@@ -139,8 +141,7 @@ class KB11 {
     u16 stacklimit, switchregister, displayregister, microbrreg ;
     u16 stackpointer[4]; // Alternate R6 (kernel, super, illegal, user)
 
-    u16 pir_str = 0 ;
-    u8 pir_cnt = 0 ;
+    u16 pirqr = 0 ;
     
     inline bool N() { return PSW & PSW_BIT_N; }
     inline bool Z() { return PSW & PSW_BIT_Z; }
@@ -209,9 +210,12 @@ class KB11 {
 
         switch (mode) {
             case 0: // Mode 0: Registers don't have a virtual address so trap!
-                trap(INTBUS);
+                trap(INTINVAL);
             case 1: // Mode 1: (R)
                 result.operand = RR[REG(regno)] ;
+                if (check_stack && regno == 6) {
+                    checkStackLimit(RR[6]) ;
+                }
                 return result ;
             case 2: // Mode 2: (R)+ including immediate operand #x
                 result.operand = RR[REG(regno)];

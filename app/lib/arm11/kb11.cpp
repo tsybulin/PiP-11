@@ -48,31 +48,33 @@ void KB11::write16(const u16 va, const u16 v, bool d) {
     const auto a = mmu.decode<true>(va, currentmode(), d);
     switch (a) {
         case 0777772: {
-                pir_str = v & 0177000 ;
+                pirqr = v & 0177000 ;
                 u8 pl = 0 ;
-                if (pir_str & 01000) {
+                if (pirqr & 01000) {
                     pl = 042 ;
                 }
-                if (pir_str & 02000) {
+                if (pirqr & 02000) {
                     pl = 0104 ;
                 }
-                if (pir_str & 03000) {
+                if (pirqr & 04000) {
                     pl = 0146 ;
                 }
-                if (pir_str & 04000) {
+                if (pirqr & 010000) {
                     pl = 0210 ;
                 }
-                if (pir_str & 05000) {
+                if (pirqr & 020000) {
                     pl = 0252 ;
                 }
-                if (pir_str & 06000) {
+                if (pirqr & 040000) {
                     pl = 0314 ;
                 }
-                if (pir_str & 07000) {
+                if (pirqr & 0100000) {
                     pl = 0356 ;
                 }
-                pir_str |= pl ;
-                pir_cnt = pl ;
+
+                if (pl > 0) {
+                    pirqr |= pl ;
+                }
             }
 
             break ;
@@ -354,7 +356,7 @@ void KB11::MFPS(const u16 instr) {
 // JSR 004RDD
 void KB11::JSR(const u16 instr) {
     if (((instr >> 3) & 7) == 0) {
-        trap(INTBUS);
+        trap(INTINVAL);
     }
     Operand op = DA<2>(instr) ;
     if (stackTrap == STACK_TRAP_RED) {
@@ -370,7 +372,7 @@ void KB11::JSR(const u16 instr) {
 void KB11::JMP(const u16 instr) {
     if (((instr >> 3) & 7) == 0) {
         // Registers don't have a virtual address so trap!
-        trap(INTBUS);
+        trap(INTINVAL);
     } else {
         RR[7] = DA<2>(instr).operand ;
     }
@@ -471,14 +473,23 @@ void KB11::WAIT() {
 }
 
 void KB11::RESET() {
-    pir_str = 0 ;
-    pir_cnt = 0 ;
+    pirqr = 0 ;
     if (currentmode()) {
         // RESET is ignored outside of kernel mode
         return;
     }
     stacklimit = 0 ;
     unibus.reset();
+    mmu.SR[0]=0;
+    mmu.SR[3]=0;
+    PSW = 0 ;
+    for (u8 i = 0; i < 32 - 1; i++) {
+        if (itab[i].vec == INTPIR) {
+            itab[i].vec = 0;
+            itab[i].pri = 0 ;
+        }
+    }
+    wtstate = false ;
 }
 
 // SWAB 0003DD
@@ -540,6 +551,7 @@ void KB11::step() {
                                     // Console::get()->printf(" HALT:\r\n");
                                     // printstate();
                                     cpuStatus = CPU_STATUS_HALT ;
+                                    return ;
                                 case 1: // WAIT 000001
                                     WAIT();
                                     return;
@@ -973,14 +985,10 @@ void KB11::ptstate() {
 }
 
 void KB11::pirq() {
-    if (pir_str == 0) {
+    if (pirqr == 0) {
         return ;
     }
 
-    if (--pir_cnt == 0) {
-        pir_cnt = pir_str & 0377 ;
-
-        u8 pri = (pir_str & 0177000) >> 9 ;
-        interrupt(INTPIR, pri) ;
-    }
+    u8 pri = (pirqr >> 1) & 7 ;
+    interrupt(INTPIR, pri) ;
 }

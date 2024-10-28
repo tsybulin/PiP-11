@@ -146,7 +146,4 @@ void UNIBUS::reset(bool i2c) {
         ptr_ptp.reset() ;
         lp11.reset();
     }
-    cpu.mmu.SR[0]=0;
-    cpu.mmu.SR[3]=0;
-    cpu.PSW = 0 ;
 }
