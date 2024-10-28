@@ -116,8 +116,10 @@ void loop() {
         cpu.unibus.lp11.step() ;
         cpu.pirq() ;
         
+        cpu.unibus.cons.xpoll();
+
         if (kbdelay++ == 2000) {
-            cpu.unibus.cons.poll();
+            cpu.unibus.cons.rpoll();
             cpu.unibus.dl11.poll();
             kbdelay = 0;
         }
