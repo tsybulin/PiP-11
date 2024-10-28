@@ -221,45 +221,46 @@ void KB11::ASH(const u16 instr) {
 			PSW |= PSW_BIT_C;
 	}
 	sval &= 0xffff;
-	RR[reg] = sval;
 	setZ(sval == 0);
 	if (sval & 0100000) {
 		PSW |= PSW_BIT_N;
 	}
+	RR[reg] = sval;
 }
 
 void KB11::ASHC(const u16 instr) {
 	const auto reg = REG((instr >> 6) & 7) ;
-	const auto val1 = ((u32)(RR[reg]) << 16) | RR[reg | 1];
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-	auto val2 = read<2>(op.operand, dpage) & 077;
-	PSW &= 0xFFF0;
-	u32 msk;
-	s64 sval = (int)val1;
-	if (val2 & 040)
-	{
-		val2 = 0100 - val2;
-		msk = (1 << val2) - 1;
-		sval = sval >> val2;
-		if ((val1 & msk) && val2)
-			PSW |= PSW_BIT_C;
-	}
-	else
-	{
-		sval = sval << val2;
-		msk = 0x100000000 >> val2;
-		if ((sval & 0x80000000) != (val1 & 0x80000000))
-			PSW |= PSW_BIT_V;
-		if ((val1 & msk) && val2)
-			PSW |= PSW_BIT_C;
-	}
-	RR[reg] = (sval >> 16) & 0xFFFF;
-	RR[reg | 1] = sval & 0xFFFF;
-	setZ((sval & 0xffffffff) == 0);
-	if (sval & 0x80000000)
-		PSW |= PSW_BIT_N;
-	//printf("%012o %06o %012o %06o\r\n", val1, val2, (u32)sval, PSW);
+	auto nbits = read<2>(op.operand, dpage) & 077;
+
+    s32 sign = ((RR[reg]) >> 15) & 1 ;
+    s32 src = (((u32) RR[reg]) << 16) | RR[reg | 1];
+    s32 dst, i ;
+
+    if (nbits == 0) {                            /* [0] */
+        dst = src;
+        setPSWbit(PSW_BIT_V, false) ;
+        setPSWbit(PSW_BIT_C, false) ;
+    } else if (nbits <= 31) {                      /* [1,31] */
+        dst = ((u32) src) << nbits;
+        i = (src >> (32 - nbits)) | (-sign << nbits);
+        setPSWbit(PSW_BIT_V, i != ((dst & 020000000000)? -1: 0)) ;
+        setPSWbit(PSW_BIT_C, i & 1) ;
+    } else if (nbits == 32) {                      /* [32] = -32 */
+        dst = -sign;
+        setPSWbit(PSW_BIT_V, false) ;
+        setPSWbit(PSW_BIT_C, sign) ;
+    } else {                                      /* [33,63] = -31,-1 */
+        dst = (src >> (64 - nbits)) | (-sign << (nbits - 32));
+        setPSWbit(PSW_BIT_V, false) ;
+        setPSWbit(PSW_BIT_C, (src >> (63 - nbits)) & 1) ;
+    }
+    
+    i = RR[reg] = (dst >> 16) & 0177777;
+    dst = RR[reg | 1] = dst & 0177777;
+    setPSWbit(PSW_BIT_N, ((i) >> 15) & 1) ;
+    setPSWbit(PSW_BIT_Z, (dst | i) == 0) ;
 }
 
 // XOR 074RDD

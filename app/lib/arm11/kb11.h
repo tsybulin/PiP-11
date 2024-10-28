@@ -151,6 +151,10 @@ class KB11 {
             PSW |= PSW_BIT_Z;
     }
 
+    inline void setPSWbit(const u8 bit, const bool b) {
+        PSW = (PSW & ~bit) | (b ? bit : 0) ;
+    }
+    
     inline u16 fetch16() {
         const auto val = read16(RR[7]);
         RR[7] += 2;
