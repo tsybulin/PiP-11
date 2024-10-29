@@ -42,6 +42,7 @@ void ODT::loop() {
         case 010: // backspace
         case 0177: // delete
         case 015: // enter
+        case 'b':
         case 'c':
         case 'g':
         case 'e':
@@ -104,7 +105,14 @@ void ODT::parseChar(const char c) {
             return ;
         }
 
-        if (buf[0] != 'g' && buf[0] != 'e' && buf[0] != 'd' && buf[0] != 's' && buf[0] != 'u') {
+        if (
+            buf[0] != 'b' &&
+            buf[0] != 'g' &&
+            buf[0] != 'e' &&
+            buf[0] != 'd' &&
+            buf[0] != 's' &&
+            buf[0] != 'u')
+        {
             return ;
         }
 
@@ -139,6 +147,7 @@ void ODT::parseCommand() {
     if (bufptr == 1 && buf[0] == '?') {
         cons->printf("\r\n") ;
         cons->printf("?         : this help\r\n") ;
+        cons->printf("b oa      : set breakpoint at octall address oa, 0 to clear\r\n") ;
         cons->printf("c         : continue\r\n") ;
         cons->printf("d oa ov   : deposit octal value ov to octall address oa\r\n") ;
         cons->printf("e ob[-oe] : examine octall address ob or range ob ..< oe\r\n") ;
@@ -303,6 +312,26 @@ void ODT::parseCommand() {
         if (r == 1) {
             arg1 = (arg1 >> 1) << 1 ;
             disasm(arg1) ;
+        } else {
+            cons->printf("incorrect args. ? for help\r\n") ;
+        }
+
+        bufptr = 0 ;
+        return ;
+    }
+
+    if (bufptr > 0 && buf[0] == 'b') {
+        cons->printf("\r\n") ;
+        u32 arg1, arg2 ;
+
+        if (bufptr > 2) {
+            bufptr = 2 ;
+        }
+
+        int r = parseArg(&arg1, &arg2) ;
+        if (r == 1) {
+            arg1 = (arg1 >> 1) << 1 ;
+            cpu.odtbpt = arg1 ;
         } else {
             cons->printf("incorrect args. ? for help\r\n") ;
         }
