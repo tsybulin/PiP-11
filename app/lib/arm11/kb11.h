@@ -136,6 +136,7 @@ class KB11 {
     u16 RR[14]; // R0-R7, R10-15
 
     volatile CPUStatus cpuStatus = CPU_STATUS_UNKNOWN ;
+    u16 odtbpt = 0 ;
   private:
     u16 oldPSW;
     u16 stacklimit, switchregister, displayregister, microbrreg ;
@@ -189,14 +190,10 @@ class KB11 {
     }
 
     inline void checkStackLimit(const u16 addr) {
-        if (currentmode() == 0) {
-            if (addr < (stacklimit + STACK_LIMIT_YELLOW)) {
-                stackTrap = STACK_TRAP_YELLOW ;
-            }
-        }
-
         if (addr < (stacklimit + STACK_LIMIT_RED)) {
             stackTrap = STACK_TRAP_RED ;
+        } else if (addr < (stacklimit + STACK_LIMIT_YELLOW)) {
+            stackTrap = STACK_TRAP_YELLOW ;
         }
     }
 
@@ -318,7 +315,7 @@ class KB11 {
         }
 
         if (mode && !istrap) {
-            newpsw = (newpsw & ~PSW_BIT_PRIORITY) | (PSW & PSW_BIT_PRIORITY) ;
+            // newpsw = (newpsw & ~PSW_BIT_PRIORITY) | (PSW & PSW_BIT_PRIORITY) ;
             // newpsw |= ((PSW & PSW_BIT_MODE) | (psw & PSW_BIT_MODE)) ;
             // newpsw |= ((PSW & PSW_BIT_PRIV_MODE) | (psw & PSW_BIT_PRIV_MODE)) ;
             newpsw |= ((PSW & PSW_BIT_REG_SET) | (psw & PSW_BIT_REG_SET)) ;

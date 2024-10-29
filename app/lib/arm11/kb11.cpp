@@ -75,6 +75,14 @@ void KB11::write16(const u16 va, const u16 v, bool d) {
                 if (pl > 0) {
                     pirqr |= pl ;
                 }
+
+                if (pirqr == 0) {
+                    for (u8 i = 0; i < 32 - 1; i++) {
+                        if (itab[i].vec == INTPIR) {
+                            itab[i].vec = 0 ;
+                        }
+                    }
+                }
             }
 
             break ;
@@ -532,11 +540,11 @@ void KB11::step() {
     PC = RR[7];
     rflag = 0;
     const auto instr = fetch16();
-    if (!(mmu.SR[0] & 0160000))
+    
+    if (!(mmu.SR[0] & 0160000)) {
         mmu.SR[2] = PC;
-    if (print)
-        printstate();
-
+    }
+    
     switch (instr >> 12) {    // xxSSDD Mostly double operand instructions
         case 0:                   // 00xxxx mixed group
             switch (instr >> 8) { // 00xxxx 8 bit instructions first (branch & JSR)
@@ -950,10 +958,10 @@ void KB11::trapat(u16 vec) {
         gprintf("Thou darst calling trapat() with an odd vector number?\n");
         while(!interrupted) ;
     }
-    //  if (vec == 0220) print = true;
+
     auto opsw = PSW;
     auto npsw = unibus.read16(mmu.decode<false>(vec, 0) + 2);
-    writePSW(npsw | (currentmode() << 12), true);
+    writePSW((npsw & ~PSW_BIT_PRIV_MODE) | (currentmode() << 12), true);
     push(opsw);
     push(RR[7]);
     RR[7] = unibus.read16(mmu.decode<false>(vec, 0));       // Get from K-apace
