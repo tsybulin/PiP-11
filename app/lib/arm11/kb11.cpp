@@ -959,6 +959,8 @@ void KB11::trapat(u16 vec) {
         while(!interrupted) ;
     }
 
+    u16 PC = RR[7] ;
+
     auto opsw = PSW;
     auto npsw = unibus.read16(mmu.decode<false>(vec, 0) + 2);
     writePSW((npsw & ~PSW_BIT_PRIV_MODE) | (currentmode() << 12), true);
@@ -966,6 +968,10 @@ void KB11::trapat(u16 vec) {
     push(RR[7]);
     RR[7] = unibus.read16(mmu.decode<false>(vec, 0));       // Get from K-apace
     wtstate = false;
+
+    if (cpuStatus != CPU_STATUS_ENABLE) {
+        CLogger::Get()->Write("KB11", LogError, "trapat vec:%03o, at:%06o, oldPSW:%06o, to:%06o, npsw:%06o, newPSW:%06o", vec, PC, opsw, RR[7], npsw, PSW) ;
+    }
 }
 
 void KB11::printstate() {

@@ -84,6 +84,11 @@ void loop() {
 
     if (vec) {
         cpu.trapat(vec) ;
+
+        if (cpu.cpuStatus == CPU_STATUS_STEP) {
+            cpu.cpuStatus = CPU_STATUS_HALT ;
+        }
+
         return ;
     }
 
@@ -95,12 +100,17 @@ void loop() {
 
         if (cpu.cpuStatus == CPU_STATUS_HALT) {
             odt.loop() ;
-            continue; ;
+            continue ;
         }
 
         if ((cpu.itab[0].vec > 0) && (cpu.itab[0].pri > cpu.priority())) {
             cpu.trapat(cpu.itab[0].vec);
             cpu.popirq();
+
+            if (cpu.cpuStatus == CPU_STATUS_STEP) {
+                cpu.cpuStatus = CPU_STATUS_HALT ;
+            }
+
             return; // exit from loop to reset trapbuf
         }
         
