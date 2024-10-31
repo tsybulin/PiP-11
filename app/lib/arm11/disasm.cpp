@@ -11,7 +11,7 @@ const char *rs[8] = {"R0", "R1", "R2", "R3", "R4", "R5", "SP", "PC"};
 struct D {
     u16 mask;
     u16 ins;
-    const char *msg;
+    const char *name;
     u8 flag;
     bool b;
 };
@@ -87,59 +87,59 @@ constexpr D disamtable[] = {
     {0, 0, "", 0, false},
 };
 
-void disasmaddr(u16 m, u32 a) {
+void disasmaddr(u16 m, u16 a) {
     if (m & 7) {
         switch (m) {
-        case 027:
-            a += 2;
-            Console::get()->printf("#%06o", cpu.unibus.read16(a));
-            return;
-        case 037:
-            a += 2;
-            Console::get()->printf("*%06o", cpu.unibus.read16(a));
-            return;
-        case 067:
-            a += 2;
-            Console::get()->printf("*%06o", (a + 2 + (cpu.unibus.read16(a))) & 0xFFFF);
-            return;
-        case 077:
-            Console::get()->printf("**%06o", (a + 2 + (cpu.unibus.read16(a))) & 0xFFFF);
-            return;
+            case 027:
+                a += 2;
+                Console::get()->printf("#%06o", cpu.read16(a));
+                return;
+            case 037:
+                a += 2;
+                Console::get()->printf("@#%06o", cpu.read16(a));
+                return;
+            case 067:
+                a += 2;
+                Console::get()->printf("%06o", (a + 2 + (cpu.read16(a))) & 0xFFFF);
+                return;
+            case 077:
+                Console::get()->printf("@%06o", (a + 2 + (cpu.read16(a))) & 0xFFFF);
+                return;
         }
     }
 
     switch (m & 070) {
-    case 000:
-        Console::get()->printf("%s", rs[m & 7]);
-        break;
-    case 010:
-        Console::get()->printf("(%s)", rs[m & 7]);
-        break;
-    case 020:
-        Console::get()->printf("(%s)+", rs[m & 7]);
-        break;
-    case 030:
-        Console::get()->printf("*(%s)+", rs[m & 7]);
-        break;
-    case 040:
-        Console::get()->printf("-(%s)", rs[m & 7]);
-        break;
-    case 050:
-        Console::get()->printf("*-(%s)", rs[m & 7]);
-        break;
-    case 060:
-        a += 2;
-        Console::get()->printf("%06o (%s)", cpu.unibus.read16(a), rs[m & 7]);
-        break;
-    case 070:
-        a += 2;
-        Console::get()->printf("*%06o (%s)", cpu.unibus.read16(a), rs[m & 7]);
-        break;
+        case 000:
+            Console::get()->printf("%s", rs[m & 7]);
+            break;
+        case 010:
+            Console::get()->printf("(%s)", rs[m & 7]);
+            break;
+        case 020:
+            Console::get()->printf("(%s)+", rs[m & 7]);
+            break;
+        case 030:
+            Console::get()->printf("@(%s)+", rs[m & 7]);
+            break;
+        case 040:
+            Console::get()->printf("-(%s)", rs[m & 7]);
+            break;
+        case 050:
+            Console::get()->printf("@-(%s)", rs[m & 7]);
+            break;
+        case 060:
+            a += 2;
+            Console::get()->printf("%06o(%s)", cpu.read16(a), rs[m & 7]);
+            break;
+        case 070:
+            a += 2;
+            Console::get()->printf("@%06o(%s)", cpu.read16(a), rs[m & 7]);
+            break;
     }
 }
 
-void disasm(u32 a) {
-    const auto ins = cpu.unibus.read16(a);
+void disasm(u16 a) {
+    const auto ins = cpu.read16(a);
 
     D l = {0, 0, "", 0, false};
     for (auto i = 0; disamtable[i].ins; i++) {
@@ -153,39 +153,41 @@ void disasm(u32 a) {
         return;
     }
 
-    Console::get()->printf("%s", l.msg);
+    Console::get()->printf("%s", l.name);
     if (l.b && (ins & 0100000)) {
         Console::get()->printf("B");
     }
-    const auto s = (ins & 07700) >> 6;
-    const auto d = ins & 077;
+
+    const auto ss = (ins & 07700) >> 6;
+    const auto dd = ins & 077;
     auto o = ins & 0377;
+
     switch (l.flag) {
-    case S | DD:
-        Console::get()->printf(" ");
-        disasmaddr(s, a);
-        Console::get()->printf(",");
-        [[fallthrough]];
-    case DD:
-        Console::get()->printf(" ");
-        disasmaddr(d, a);
-        break;
-    case RR | O:
-        Console::get()->printf(" %s,", rs[(ins & 0700) >> 6]);
-        o &= 077;
-        [[fallthrough]];
-    case O:
-        if (o & 0x80) {
-            Console::get()->printf(" -%03o", (2 * ((0xFF ^ o) + 1)));
-        } else {
-            Console::get()->printf(" +%03o", (2 * o));
-        };
-        break;
-    case RR | DD:
-        Console::get()->printf(" %s, ", rs[(ins & 0700) >> 6]);
-        disasmaddr(d, a);
-        [[fallthrough]];
-    case RR:
-        Console::get()->printf(" %s", rs[ins & 7]);
+        case S | DD:
+            Console::get()->printf(" ");
+            disasmaddr(ss, a);
+            Console::get()->printf(",");
+            [[fallthrough]];
+        case DD:
+            Console::get()->printf(" ");
+            disasmaddr(dd, a);
+            break;
+        case RR | O:
+            Console::get()->printf(" %s,", rs[(ins & 0700) >> 6]);
+            o &= 077;
+            [[fallthrough]];
+        case O:
+            if (o & 0x80) {
+                Console::get()->printf(" -%03o", (2 * ((0xFF ^ o) + 1)));
+            } else {
+                Console::get()->printf(" +%03o", (2 * o));
+            }
+            break;
+        case RR | DD:
+            Console::get()->printf(" %s, ", rs[(ins & 0700) >> 6]);
+            disasmaddr(dd, a);
+            [[fallthrough]];
+        case RR:
+            Console::get()->printf(" %s", rs[ins & 7]);
     }
 }
