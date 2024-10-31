@@ -44,8 +44,8 @@ void KB11::reset(u16 start) {
     wtstate = false;
 }
 
-void KB11::write16(const u16 va, const u16 v, bool d) {
-    const auto a = mmu.decode<true>(va, currentmode(), d);
+void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
+    const auto a = mmu.decode<true>(va, currentmode(), d, src);
     switch (a) {
         case 0777772: {
                 pirqr = v & 0177000 ;
@@ -111,7 +111,7 @@ void KB11::ADD(const u16 instr) {
         return ;
     }
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-    const auto dst = read<2>(op.operand, dpage);
+    const auto dst = read<2>(op.operand, dpage, false);
     const auto sum = src + dst;
     PSW &= 0xFFF0;
     setNZ<2>(sum);
@@ -132,7 +132,7 @@ void KB11::SUB(const u16 instr) {
         return ;
     }
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-    const auto val2 = read<2>(op.operand, dpage);
+    const auto val2 = read<2>(op.operand, dpage, false);
     const auto uval = (val2 - val1) & 0xFFFF;
     PSW &= 0xFFF0;
     setNZ<2>(uval);
@@ -275,7 +275,7 @@ void KB11::XOR(const u16 instr) {
         return ;
     }
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-    const auto dst = reg ^ read<2>(op.operand, dpage);
+    const auto dst = reg ^ read<2>(op.operand, dpage, false);
     setNZ<2>(dst);
     write<2>(op.operand, dst, dpage);
 }
@@ -507,9 +507,8 @@ void KB11::SWAB(const u16 instr) {
         return ;
     }
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-    auto dst = read<2>(op.operand, dpage);
+    auto dst = read<2>(op.operand, dpage, false);
     dst = (dst << 8) | (dst >> 8);
-    write<2>(op.operand, dst, dpage);
     PSW &= 0xFFF0;
     if ((dst & 0xff) == 0) {
         PSW |= PSW_BIT_Z;
@@ -517,6 +516,7 @@ void KB11::SWAB(const u16 instr) {
     if (dst & 0x80) {
         PSW |= PSW_BIT_N;
     }
+    write<2>(op.operand, dst, dpage);
 }
 
 // SXT 0067DD
@@ -962,11 +962,11 @@ void KB11::trapat(u16 vec) {
     u16 PC = RR[7] ;
 
     auto opsw = PSW;
-    auto npsw = unibus.read16(mmu.decode<false>(vec, 0) + 2);
+    auto npsw = unibus.read16(mmu.decode<false>(vec, 0, false, true) + 2);
     writePSW((npsw & ~PSW_BIT_PRIV_MODE) | (currentmode() << 12), true);
     push(opsw);
     push(RR[7]);
-    RR[7] = unibus.read16(mmu.decode<false>(vec, 0));       // Get from K-apace
+    RR[7] = unibus.read16(mmu.decode<false>(vec, 0, false, true));       // Get from K-apace
     wtstate = false;
 
     if (cpuStatus != CPU_STATUS_ENABLE) {

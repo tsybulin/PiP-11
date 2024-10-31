@@ -103,8 +103,8 @@ class KB11 {
     bool wasRTT = false ;
     StackTrap stackTrap = STACK_TRAP_NONE ;
 
-    inline u16 read16(const u16 va, bool d = false) {
-        const auto a = mmu.decode<false>(va, currentmode(), d);
+    inline u16 read16(const u16 va, bool d = false, bool src = true) {
+        const auto a = mmu.decode<false>(va, currentmode(), d, src);
         switch (a) {
             case 0777776:
                 return PSW;
@@ -121,7 +121,7 @@ class KB11 {
         }
     }
 
-    void write16(const u16 va, const u16 v, bool d = false);
+    void write16(const u16 va, const u16 v, bool d = false, bool src = false);
     
     inline u8 REG(const u8 reg) {
         return reg > 5 ? reg : PSW & PSW_BIT_REG_SET ? reg + 8 : reg ;
@@ -197,7 +197,7 @@ class KB11 {
         }
     }
 
-    template <auto len> Operand fetchOperand(const u16 instr, bool check_stack = false) {
+    template <auto len> Operand fetchOperand(const u16 instr, bool check_stack = false, bool src = false) {
         const auto mode = (instr >> 3) & 7;
         const auto regno = instr & 7;
 
@@ -228,7 +228,7 @@ class KB11 {
                     checkStackLimit(RR[6]) ;
                 }
                 RR[REG(regno)] += 2;
-                result.operand = read16(result.operand, den);
+                result.operand = read16(result.operand, den, src);
                 result.operandType = regno < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
                 return result ;
             case 4: // Mode 4: -(R)
@@ -244,7 +244,7 @@ class KB11 {
                     checkStackLimit(RR[6]) ;
                 }
                 result.operand = RR[REG(regno)];
-                result.operand = read16(result.operand, den);
+                result.operand = read16(result.operand, den, src);
                 return result;
             case 6: // Mode 6: d(R)
                 result.operand = fetch16();
@@ -259,7 +259,7 @@ class KB11 {
                 if (check_stack && regno == 6) {
                     checkStackLimit(result.operand) ;
                 }
-                result.operand = read16(result.operand, den);
+                result.operand = read16(result.operand, den, src);
                 return result ;
         }
     }
@@ -272,7 +272,7 @@ class KB11 {
             return RR[REG((instr >> 6) & 7)] & max<len>();
         }
 
-        const Operand op = fetchOperand<len>(instr >> 6);
+        const Operand op = fetchOperand<len>(instr >> 6, false, true);
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 
         if constexpr (len == 2) {
@@ -331,7 +331,7 @@ class KB11 {
         writePSW((PSW & 0007777) | (currentmode() << 12));
     }
 
-    template <auto l> constexpr inline u16 read(const u16 a, bool d = false) {
+    template <auto l> constexpr inline u16 read(const u16 a, bool d = false, bool src = true) {
         static_assert(l == 1 || l == 2);
 
         if (rflag) {
@@ -343,12 +343,12 @@ class KB11 {
             }
         }
         if constexpr (l == 2) {
-            return read16(a, d);
+            return read16(a, d, src);
         }
         if (a & 1) {
-            return read16(a & ~1, d) >> 8;
+            return read16(a & ~1, d, src) >> 8;
         }
-        return read16(a, d) & 0xFF;
+        return read16(a, d, src) & 0xFF;
     }
 
     template <auto l> constexpr void write(const u16 a, const u16 v, bool d = false) {
@@ -403,7 +403,7 @@ class KB11 {
         Operand op = DA<l>(instr) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 
-        const auto dst = read<l>(op.operand, dpage);
+        const auto dst = read<l>(op.operand, dpage, false);
         const auto sval = (src - dst) & max<l>();
         PSW &= PSW_MASK_COND;
         if (sval == 0) {
@@ -460,7 +460,7 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        const auto dst = read<l>(op.operand, dpage);
+        const auto dst = read<l>(op.operand, dpage, false);
         auto uval = (max<l>() ^ src) & dst;
         PSW &= (PSW_MASK_COND | PSW_BIT_C);
         setZ(uval == 0);
@@ -477,7 +477,7 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        const auto dst = read<l>(op.operand, dpage);
+        const auto dst = read<l>(op.operand, dpage, false);
         auto uval = src | dst;
         PSW &= (PSW_MASK_COND | PSW_BIT_C);
         setZ(uval == 0);
@@ -506,7 +506,7 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        const auto dst = ~read<l>(op.operand, dpage);
+        const auto dst = ~read<l>(op.operand, dpage, false);
         PSW &= PSW_MASK_COND;
         if ((dst & msb<l>())) {
             PSW |= PSW_BIT_N;
@@ -525,8 +525,8 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        const auto oval = read<l>(op.operand, dpage) & max<l>();
-        const auto uval = (read<l>(op.operand, dpage) - 1) & max<l>();
+        const auto oval = read<l>(op.operand, dpage, false) & max<l>();
+        const auto uval = (read<l>(op.operand, dpage, false) - 1) & max<l>();
         setNZ<l>(uval);
         if (oval == msb<l>()) {
             PSW |= PSW_BIT_V;
@@ -541,7 +541,7 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        const auto dst = (-read<l>(op.operand, dpage)) & max<l>();
+        const auto dst = (-read<l>(op.operand, dpage, false)) & max<l>();
         PSW &= PSW_MASK_COND;
         if (dst & msb<l>()) {
             PSW |= PSW_BIT_N;
@@ -563,7 +563,7 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        auto uval = read<l>(op.operand, dpage);
+        auto uval = read<l>(op.operand, dpage, false);
         if (PSW & PSW_BIT_C) {
             PSW &= PSW_MASK_COND;
             if ((uval + 1) & msb<l>()) {
@@ -596,7 +596,7 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        auto sval = read<l>(op.operand, dpage);
+        auto sval = read<l>(op.operand, dpage, false);
         auto qval = sval;
         PSW &= ~(PSW_BIT_N | PSW_BIT_V | PSW_BIT_Z);
         if (PSW & PSW_BIT_C) {
@@ -619,7 +619,7 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        const auto dst = read<l>(op.operand, dpage);
+        const auto dst = read<l>(op.operand, dpage, false);
         auto result = dst >> 1;
         if (PSW & PSW_BIT_C) {
             result |= msb<l>();
@@ -647,7 +647,7 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        u32 sval = read<l>(op.operand, dpage) << 1;
+        u32 sval = read<l>(op.operand, dpage, false) << 1;
         if (PSW & PSW_BIT_C) {
             sval |= 1;
         }
@@ -672,7 +672,7 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        auto uval = read<l>(op.operand, dpage);
+        auto uval = read<l>(op.operand, dpage, false);
         PSW &= PSW_MASK_COND;
         if (uval & 1) {
             PSW |= PSW_BIT_C;
@@ -695,7 +695,7 @@ class KB11 {
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         // TODO(dfc) doesn't need to be an sval
-        u32 sval = read<l>(op.operand, dpage);
+        u32 sval = read<l>(op.operand, dpage, false);
         PSW &= PSW_MASK_COND;
         if (sval & msb<l>()) {
             PSW |= PSW_BIT_C;
@@ -718,7 +718,7 @@ class KB11 {
             return ;
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        const auto dst = read<l>(op.operand, dpage) + 1;
+        const auto dst = read<l>(op.operand, dpage, false) + 1;
         setNZV<l>(dst);
         write<l>(op.operand, dst, dpage);
     }
@@ -728,7 +728,7 @@ class KB11 {
         const auto src = SS<l>(instr);
         Operand op = DA<l>(instr) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        const auto dst = read<l>(op.operand, dpage);
+        const auto dst = read<l>(op.operand, dpage, false);
         const auto result = src & dst;
         setNZ<l>(result);
     }
@@ -737,7 +737,7 @@ class KB11 {
     template <auto l> void TST(const u16 instr) {
         Operand op = DA<l>(instr) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-        const auto dst = read<l>(op.operand, dpage);
+        const auto dst = read<l>(op.operand, dpage, false);
         PSW &= PSW_MASK_COND;
         if ((dst & max<l>()) == 0) {
             PSW |= PSW_BIT_Z;

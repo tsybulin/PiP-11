@@ -8,11 +8,15 @@ class KT11 {
   public:
     u16 SR[4] = {0, 0, 0, 0}; // MM status registers
 
-    template <bool wr> inline u32 decode(const u16 a, const u16 mode, bool d = false) {
-        if ((SR[0] & 1) == 0) {
+    template <bool wr> inline u32 decode(const u16 a, const u16 mode, bool d = false, bool src = false) {
+        if ((SR[0] & 0401) == 0) {
             return a > 0157777 ? ((u32)a) + 0600000 : a;
         }
         
+        if (((SR[0] & 0401) == 0400) && src) {
+            return a > 0157777 ? ((u32)a) + 0600000 : a;
+        }
+
         const auto i = (a >> 13) + (d ? 8 : 0); // page index
  
         if (wr && !pages[mode][i].write()) {
