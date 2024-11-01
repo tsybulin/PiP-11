@@ -44,10 +44,10 @@ void KT11::write16(const u32 a, const u16 v) {
     const u8 d = i + 8 ;
     switch (a & ~017) {
         case 0772200:
-            pages[01][i].pdr = v & 077416;
+            pages[01][i].pdr = v & 077417;
             break;
         case 0772220:
-            pages[01][d].pdr = v & 077416;
+            pages[01][d].pdr = v & 077417;
             break;
         case 0772240:
             pages[01][i].par = v & 07777;
@@ -58,10 +58,10 @@ void KT11::write16(const u32 a, const u16 v) {
             pages[01][d].pdr &= ~0100;
             break;
         case 0772300:
-            pages[00][i].pdr = v & 077416;
+            pages[00][i].pdr = v & 077417;
             break;
         case 0772320:
-            pages[00][d].pdr = v & 077416;
+            pages[00][d].pdr = v & 077417;
             break;
         case 0772340:
             pages[00][i].par = v & 07777;
@@ -72,10 +72,10 @@ void KT11::write16(const u32 a, const u16 v) {
             pages[00][d].pdr &= ~0100;
             break;
         case 0777600:
-            pages[03][i].pdr = v & 077416;
+            pages[03][i].pdr = v & 077417;
             break;
         case 0777620:
-            pages[03][d].pdr = v & 077416;
+            pages[03][d].pdr = v & 077417;
             break;
         case 0777640:
             pages[03][i].par = v & 07777;

@@ -20,9 +20,18 @@ class KT11 {
         }
 
         const auto i = (a >> 13) + (d ? 8 : 0); // page index
- 
+
+        if (pages[mode][i].nr()) {
+            SR[0] = (1 << 15) | 1 | (d ? 020 : 0) ;
+            SR[0] |= (a >> 12) & ~1;
+            if (mode) {
+                SR[0] |= (1 << 5) | (1 << 6);
+            }
+            trap(INTFAULT) ;
+        }
+
         if (wr && !pages[mode][i].write()) {
-            SR[0] = (1 << 13) | 1;
+            SR[0] = (1 << 13) | 1 | (d ? 020 : 0) ;
             SR[0] |= (a >> 12) & ~1;
             if (mode) {
                 SR[0] |= (1 << 5) | (1 << 6);
@@ -31,7 +40,7 @@ class KT11 {
         }
 
         if (!pages[mode][i].read()) {
-            SR[0] = (1 << 15) | 1;
+            SR[0] = (1 << 15) | 1 | (d ? 020 : 0) ;
             SR[0] |= (a >> 12) & ~1;
             if (mode) {
                 SR[0] |= (1 << 5) | (1 << 6);
@@ -44,7 +53,7 @@ class KT11 {
 
         if (pages[mode][i].ed() ? (block < pages[mode][i].len())
                                 : (block > pages[mode][i].len())) {
-            SR[0] = (1 << 14) | 1;
+            SR[0] = (1 << 14) | 1 | (d ? 020 : 0);
             SR[0] |= (a >> 12) & ~1;
             if (mode) {
                 SR[0] |= (1 << 5) | (1 << 6);
@@ -58,8 +67,8 @@ class KT11 {
 
         u32 aa = (((pages[mode][i].addr() + block) << 6) + disp) & 0777777;
 
-        // if (T == 026) {
-        //     CLogger::Get()->Write("KT11", LogError, "decode a:%06o, m:%02o, d:%d, src:%d, A:%06o", a, mode, d, src, aa) ;
+        // if (T == 4 && a == 0160000) {
+        //     CLogger::Get()->Write("KT11", LogError, "decode a:%06o, m:%02o, d:%d, i:%d, A:%06o", a, mode, d, i, aa) ;
         // }
 
         return aa ;
@@ -77,6 +86,9 @@ class KT11 {
         inline bool read() { return (pdr & 2) == 2; }
         inline bool write() { return (pdr & 6) == 6; };
         inline bool ed() { return pdr & 8; }
+        inline bool nr() {
+            return ((pdr & 7) == 0) | ((pdr & 7) == 7) ;
+        } ;
     };
 
     page pages[4][16] ;

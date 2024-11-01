@@ -111,7 +111,7 @@ void KB11::ADD(const u16 instr) {
     if (stackTrap == STACK_TRAP_RED) {
         return ;
     }
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
     const auto dst = read<2>(op.operand, dpage, false);
     const auto sum = src + dst;
     PSW &= 0xFFF0;
@@ -132,7 +132,7 @@ void KB11::SUB(const u16 instr) {
     if (stackTrap == STACK_TRAP_RED) {
         return ;
     }
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
     const auto val2 = read<2>(op.operand, dpage, false);
     const auto uval = (val2 - val1) & 0xFFFF;
     PSW &= 0xFFF0;
@@ -155,7 +155,7 @@ void KB11::MUL(const u16 instr) {
 	}
 
     Operand op = DA<2>(instr) ;
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
 	s32 val2 = read<2>(op.operand, dpage, false);
 	if (val2 & 0x8000) {
 		val2 = -((0xFFFF ^ val2) + 1);
@@ -173,7 +173,7 @@ void KB11::DIV(const u16 instr) {
 	const auto reg = REG((instr >> 6) & 7);
 	const s32 val1 = (RR[reg] << 16) | (RR[reg | 1]);
     Operand op = DA<2>(instr) ;
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
 	s32 val2 = read<2>(op.operand, dpage, false);
 	PSW &= 0xFFF0;
 	if (val2 > 32767)
@@ -200,7 +200,7 @@ void KB11::ASH(const u16 instr) {
 	const auto reg = REG((instr >> 6) & 7);
 	const auto val1 = RR[reg];
     Operand op = DA<2>(instr) ;
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
 	auto val2 = read<2>(op.operand, dpage, false) & 077;
 	PSW &= 0xFFF0;
 	s32 sval = val1;
@@ -236,7 +236,7 @@ void KB11::ASH(const u16 instr) {
 void KB11::ASHC(const u16 instr) {
 	const auto reg = REG((instr >> 6) & 7) ;
     Operand op = DA<2>(instr) ;
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
 	auto nbits = read<2>(op.operand, dpage, false) & 077;
 
     s32 sign = ((RR[reg]) >> 15) & 1 ;
@@ -275,7 +275,7 @@ void KB11::XOR(const u16 instr) {
     if (stackTrap == STACK_TRAP_RED) {
         return ;
     }
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
     const auto dst = reg ^ read<2>(op.operand, dpage, false);
     setNZ<2>(dst);
     write<2>(op.operand, dst, dpage);
@@ -339,7 +339,7 @@ void KB11::FIS(const u16 instr)
 
 void KB11::MTPS(const u16 instr) {
     Operand op = DA<1>(instr) ;
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
     auto src = read<1>(op.operand, dpage, false);
     PSW = (PSW & 0177400) | (src & 0357);
 }
@@ -351,7 +351,7 @@ void KB11::MFPS(const u16 instr) {
     if (stackTrap == STACK_TRAP_RED) {
         return ;
     }
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
     auto dst = PSW & 0357;
     if (PSW & msb<1>() && ((instr & 030) == 0)) {
         dst |= 0177400;
@@ -507,7 +507,7 @@ void KB11::SWAB(const u16 instr) {
     if (stackTrap == STACK_TRAP_RED) {
         return ;
     }
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
     auto dst = read<2>(op.operand, dpage, false);
     dst = (dst << 8) | (dst >> 8);
     PSW &= 0xFFF0;
@@ -526,7 +526,7 @@ void KB11::SXT(const u16 instr) {
     if (stackTrap == STACK_TRAP_RED) {
         return ;
     }
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
+    const bool dpage = denabled() ;
     PSW &= ~PSW_BIT_V;
     if (N()) {
         PSW &= ~PSW_BIT_Z;

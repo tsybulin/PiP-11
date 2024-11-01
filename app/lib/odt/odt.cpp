@@ -173,6 +173,8 @@ void ODT::parseCommand() {
         cons->printf("mmu   SR1:%06o\r\n", cpu.mmu.SR[1]) ;
         cons->printf("mmu   SR2:%06o\r\n", cpu.mmu.SR[2]) ;
         cons->printf("mmu   SR3:%06o\r\n", cpu.mmu.SR[3]) ;
+        cons->printf("mmu [UU][7].PAR:%06o\r\n", cpu.mmu.pages[3][15].par) ;
+        cons->printf("mmu [UU][7].PDR:%06o\r\n", cpu.mmu.pages[3][15].pdr) ;
         bufptr = 0 ;
         return ;
     }
