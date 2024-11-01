@@ -21,7 +21,7 @@
 
 extern volatile bool interrupted ;
 
-void disasm(u32 ia);
+void disasm(u16 ia);
 void fp11(int IR);
 
 void KB11::reset(u16 start) {
@@ -97,6 +97,7 @@ void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
             break ;
         case 0777570:
             displayregister = v;
+            mmu.T = v ;
             break;
         default:
             unibus.write16(a, v);
@@ -155,7 +156,7 @@ void KB11::MUL(const u16 instr) {
 
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-	s32 val2 = read<2>(op.operand, dpage);
+	s32 val2 = read<2>(op.operand, dpage, false);
 	if (val2 & 0x8000) {
 		val2 = -((0xFFFF ^ val2) + 1);
 	}
@@ -173,7 +174,7 @@ void KB11::DIV(const u16 instr) {
 	const s32 val1 = (RR[reg] << 16) | (RR[reg | 1]);
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-	s32 val2 = read<2>(op.operand, dpage);
+	s32 val2 = read<2>(op.operand, dpage, false);
 	PSW &= 0xFFF0;
 	if (val2 > 32767)
 		val2 |= 0xffff0000;
@@ -200,7 +201,7 @@ void KB11::ASH(const u16 instr) {
 	const auto val1 = RR[reg];
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-	auto val2 = read<2>(op.operand, dpage) & 077;
+	auto val2 = read<2>(op.operand, dpage, false) & 077;
 	PSW &= 0xFFF0;
 	s32 sval = val1;
 	if (val2 & 040) {
@@ -236,7 +237,7 @@ void KB11::ASHC(const u16 instr) {
 	const auto reg = REG((instr >> 6) & 7) ;
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-	auto nbits = read<2>(op.operand, dpage) & 077;
+	auto nbits = read<2>(op.operand, dpage, false) & 077;
 
     s32 sign = ((RR[reg]) >> 15) & 1 ;
     s32 src = (((u32) RR[reg]) << 16) | RR[reg | 1];
@@ -339,7 +340,7 @@ void KB11::FIS(const u16 instr)
 void KB11::MTPS(const u16 instr) {
     Operand op = DA<1>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-    auto src = read<1>(op.operand, dpage);
+    auto src = read<1>(op.operand, dpage, false);
     PSW = (PSW & 0177400) | (src & 0357);
 }
 
@@ -955,18 +956,18 @@ void KB11::popirq() {
 
 void KB11::trapat(u16 vec) {
     if (vec & 1) {
-        gprintf("Thou darst calling trapat() with an odd vector number?\n");
+        gprintf("Thou darst calling trapat() with an odd vector number?");
         while(!interrupted) ;
     }
 
     u16 PC = RR[7] ;
 
     auto opsw = PSW;
-    auto npsw = unibus.read16(mmu.decode<false>(vec, 0, false, true) + 2);
+    auto npsw = unibus.read16(mmu.decode<false>(vec, 0, mmu.SR[3] & 4, true) + 2);
     writePSW((npsw & ~PSW_BIT_PRIV_MODE) | (currentmode() << 12), true);
     push(opsw);
     push(RR[7]);
-    RR[7] = unibus.read16(mmu.decode<false>(vec, 0, false, true));       // Get from K-apace
+    RR[7] = unibus.read16(mmu.decode<false>(vec, 0, mmu.SR[3] & 4, true));       // Get from K-apace
     wtstate = false;
 
     if (cpuStatus != CPU_STATUS_ENABLE) {

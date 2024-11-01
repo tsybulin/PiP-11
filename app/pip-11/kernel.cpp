@@ -80,7 +80,7 @@ CKernel::CKernel (void)
 :	screen(options.GetWidth(), options.GetHeight()),
 	timer(&interrupt),
 	serial(&interrupt),
-	logger(options.GetLogLevel (), &timer),
+	logger(options.GetLogLevel()),
 	cpuThrottle(CPUSpeedMaximum),
 	emmc(&interrupt, &timer, &actLED),
 	i2cMaster(1),

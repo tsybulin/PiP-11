@@ -8,6 +8,8 @@ class KT11 {
   public:
     u16 SR[4] = {0, 0, 0, 0}; // MM status registers
 
+    u16 T ;
+
     template <bool wr> inline u32 decode(const u16 a, const u16 mode, bool d = false, bool src = false) {
         if ((SR[0] & 0401) == 0) {
             return a > 0157777 ? ((u32)a) + 0600000 : a;
@@ -34,7 +36,6 @@ class KT11 {
             if (mode) {
                 SR[0] |= (1 << 5) | (1 << 6);
             }
-            gprintf("mmu::decode read from no-access page %06o\n", a);
             trap(INTFAULT) ;
         }
 
@@ -55,7 +56,13 @@ class KT11 {
             pages[mode][i].pdr |= 1 << 6;
         }
 
-        return ((pages[mode][i].addr() + block) << 6) + disp;
+        u32 aa = (((pages[mode][i].addr() + block) << 6) + disp) & 0777777;
+
+        // if (T == 026) {
+        //     CLogger::Get()->Write("KT11", LogError, "decode a:%06o, m:%02o, d:%d, src:%d, A:%06o", a, mode, d, src, aa) ;
+        // }
+
+        return aa ;
     }
 
     u16 read16(const u32 a);

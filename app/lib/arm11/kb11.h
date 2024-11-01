@@ -77,6 +77,7 @@ class KB11 {
                 break ;
             case 3:
                 mask = 1 ;
+                break ;
             default:
                 mask = 0 ;
                 break;
@@ -165,11 +166,11 @@ class KB11 {
 
     inline void push(const u16 v) {
         RR[6] -= 2;
-        write16(RR[6], v);
+        write16(RR[6], v, mmu.SR[3] & 4);
     }
 
     inline u16 pop() {
-        const auto val = read16(RR[6]);
+        const auto val = read16(RR[6], mmu.SR[3] & 4);
         RR[6] += 2;
         return val;
     }
@@ -197,7 +198,24 @@ class KB11 {
         }
     }
 
-    template <auto len> Operand fetchOperand(const u16 instr, bool check_stack = false, bool src = false) {
+    inline void mmuStat(u8 regno, u8 amount, bool src) {
+        if (regno > 5 || amount == 1 || (mmu.SR[0] & 0401) == 0) {
+            return ;
+        }
+
+        if (src) {
+            mmu.SR[1] = 0 ;
+        }
+        
+        u8 v = regno | (amount << 3) ;
+        if (!src) {
+            v = v << 8 ;
+        }
+
+        mmu.SR[1] |= v ;
+    }
+
+    template <auto len> Operand fetchOperand(const u16 instr, bool check_stack = false, bool src = true) {
         const auto mode = (instr >> 3) & 7;
         const auto regno = instr & 7;
 
@@ -220,6 +238,7 @@ class KB11 {
                     checkStackLimit(RR[6]) ;
                 }
                 RR[REG(regno)] += (regno >= 6) ? 2 : len;
+                mmuStat(regno, len, src) ;
                 result.operandType = regno < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
                 return result ;
             case 3: // Mode 3: @(R)+
@@ -228,6 +247,7 @@ class KB11 {
                     checkStackLimit(RR[6]) ;
                 }
                 RR[REG(regno)] += 2;
+                mmuStat(regno, 2, src) ;
                 result.operand = read16(result.operand, den, src);
                 result.operandType = regno < 7 ? OPERAND_DATA : OPERAND_INSTRUCTION ;
                 return result ;
@@ -236,6 +256,7 @@ class KB11 {
                 if (check_stack && regno == 6) {
                     checkStackLimit(RR[6]) ;
                 }
+                mmuStat(regno, -len, src) ;
                 result.operand = RR[REG(regno)];
                 return result;
             case 5: // Mode 5: @-(R)
@@ -243,6 +264,7 @@ class KB11 {
                 if (check_stack && regno == 6) {
                     checkStackLimit(RR[6]) ;
                 }
+                mmuStat(regno, -2, src) ;
                 result.operand = RR[REG(regno)];
                 result.operand = read16(result.operand, den, src);
                 return result;
@@ -272,7 +294,7 @@ class KB11 {
             return RR[REG((instr >> 6) & 7)] & max<len>();
         }
 
-        const Operand op = fetchOperand<len>(instr >> 6, false, true);
+        const Operand op = fetchOperand<len>(instr >> 6, false);
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 
         if constexpr (len == 2) {
@@ -372,10 +394,10 @@ class KB11 {
         }
 
         if (a & 1) {
-            write16(a & ~1, (read16(a & ~1, d) & 0xff) | (vl << 8), d);
+            write16(a & ~1, (read16(a & ~1, d, false) & 0xff) | (vl << 8), d);
         }
         else {
-            write16(a, (read16(a, d) & 0xFF00) | (vl & 0xFF), d);
+            write16(a, (read16(a, d, false) & 0xFF00) | (vl & 0xFF), d);
         }
     }
 

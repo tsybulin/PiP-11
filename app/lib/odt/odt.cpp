@@ -6,7 +6,7 @@
 
 extern KB11 cpu ;
 extern queue_t keyboard_queue ;
-void disasm(u32 ia);
+void disasm(u16 ia);
 
 ODT::ODT() :
     prompt_shown(false),
@@ -47,6 +47,7 @@ void ODT::loop() {
         case 'g':
         case 'e':
         case 'd':
+        case 'h':
         case '?':
         case 'p':
         case 'r':
@@ -125,6 +126,10 @@ void ODT::parseChar(const char c) {
         return ;
     }
 
+    if (c == 'h' && bufptr > 0) {
+        return ;
+    }
+
     if (c >= '0' && c <= '7' && bufptr < 2) {
         return ;
     }
@@ -152,10 +157,22 @@ void ODT::parseCommand() {
         cons->printf("d oa ov   : deposit octal value ov to octall address oa\r\n") ;
         cons->printf("e ob[-oe] : examine octall address ob or range ob ..< oe\r\n") ;
         cons->printf("g oa      : go to octall address oa and run\r\n") ;
+        cons->printf("h         : print additional state\r\n") ;
         cons->printf("p         : print state\r\n") ;
         cons->printf("r         : reset\r\n") ;
         cons->printf("s [oa]    : step from current PC or optional octal address oa\r\n") ;
         cons->printf("u oa      : disasm instruction at octall address oa\r\n") ;
+        bufptr = 0 ;
+        return ;
+    }
+
+    if (bufptr == 1 && buf[0] == 'h') {
+        cons->printf("\r\n? : help\r\n") ;
+        cons->printf("panel  DR:%06o\r\n", cpu.displayregister) ;
+        cons->printf("mmu   SR0:%06o\r\n", cpu.mmu.SR[0]) ;
+        cons->printf("mmu   SR1:%06o\r\n", cpu.mmu.SR[1]) ;
+        cons->printf("mmu   SR2:%06o\r\n", cpu.mmu.SR[2]) ;
+        cons->printf("mmu   SR3:%06o\r\n", cpu.mmu.SR[3]) ;
         bufptr = 0 ;
         return ;
     }

@@ -47,10 +47,10 @@ void UNIBUS::write16(const u32 a, const u16 v) {
                     cpu.mmu.SR[0] = v;
                     return;
                 case 0777574:
-                    cpu.mmu.SR[1] = v;
+                    // cpu.mmu.SR[1] = v; // read-only
                     return;
                 case 0777576:
-                    // do nothing, SR2 is read only
+                    // cpu.mmu.SR[2] = v; // SR2 is read only
                     return;
                 default:
                     cons.write16(a, v);
