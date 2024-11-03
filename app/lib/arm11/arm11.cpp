@@ -158,6 +158,11 @@ void loop() {
             trap(INTDEBUG) ;
         }
 
+        if (cpu.mmu.infotrap) {
+            cpu.mmu.infotrap = false ;
+            trap(INTFAULT) ;
+        }
+
         if (cpu.cpuStatus == CPU_STATUS_STEP) {
             cpu.cpuStatus = CPU_STATUS_HALT ;
         }

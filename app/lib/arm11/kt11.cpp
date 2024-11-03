@@ -2,6 +2,34 @@
 
 extern volatile bool interrupted ;
 
+bool KT11::is_internal(const u32 a) {
+    switch (a) {
+        case 0777572:
+        case 0777574:
+        case 0777576:
+        case 0772516:
+            return true ;
+    }
+
+    switch (a & ~017) {
+        case 0772200:
+        case 0772220:
+        case 0772240:
+        case 0772260:
+        case 0772300:
+        case 0772320:
+        case 0772340:
+        case 0772360:
+        case 0777600:
+        case 0777620:
+        case 0777640:
+        case 0777660:
+            return true ;
+    }
+
+    return false ;
+}
+
 u16 KT11::read16(const u32 a) {
     const u8 i = ((a & 017) >> 1);
     const u8 d = i + 8 ;
@@ -51,11 +79,11 @@ void KT11::write16(const u32 a, const u16 v) {
             break;
         case 0772240:
             pages[01][i].par = v & 07777;
-            pages[01][i].pdr &= ~0100;
+            pages[01][i].pdr &= ~0300;
             break;
         case 0772260:
             pages[01][d].par = v & 07777;
-            pages[01][d].pdr &= ~0100;
+            pages[01][d].pdr &= ~0300;
             break;
         case 0772300:
             pages[00][i].pdr = v & 077417;
@@ -65,11 +93,11 @@ void KT11::write16(const u32 a, const u16 v) {
             break;
         case 0772340:
             pages[00][i].par = v & 07777;
-            pages[00][i].pdr &= ~0100;
+            pages[00][i].pdr &= ~0300;
             break;
         case 0772360:
             pages[00][d].par = v & 07777;
-            pages[00][d].pdr &= ~0100;
+            pages[00][d].pdr &= ~0300;
             break;
         case 0777600:
             pages[03][i].pdr = v & 077417;
@@ -79,11 +107,11 @@ void KT11::write16(const u32 a, const u16 v) {
             break;
         case 0777640:
             pages[03][i].par = v & 07777;
-            pages[03][i].pdr &= ~0100;
+            pages[03][i].pdr &= ~0300;
             break;
         case 0777660:
             pages[03][d].par = v & 07777;
-            pages[03][d].pdr &= ~0100;
+            pages[03][d].pdr &= ~0300;
             break;
         default:
             gprintf("mmu::write16 write to invalid address %06o", a);
