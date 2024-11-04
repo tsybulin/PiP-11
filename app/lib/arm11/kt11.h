@@ -22,9 +22,15 @@ class KT11 {
             const auto i = (a >> 13) + (d ? 8 : 0); // page index
 
             if (pages[mode][i].nr()) {
-                SR[0] = 0140001 | (d ? 020 : 0) ;
+                SR[0] = 0100001 | (d ? 020 : 0) ;
                 SR[0] |= (a >> 12) & ~1;
                 SR[0] |= (mode << 5) ;
+
+                const auto block = (a >> 6) & 0177;
+
+                if (pages[mode][i].ed() ? (block < pages[mode][i].len()) : (block > pages[mode][i].len())) {
+                    SR[0] |= (1 << 14);
+                }
                 trap(INTFAULT) ;
             }
 

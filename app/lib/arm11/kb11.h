@@ -203,7 +203,7 @@ class KB11 {
     }
 
     inline void mmuStat(u8 regno, u8 amount, bool src) {
-        if (regno > 5 || amount == 1 || (mmu.SR[0] & 0401) == 0) {
+        if (regno > 5 || amount == 0 || (mmu.SR[0] & 0401) == 0) {
             return ;
         }
 

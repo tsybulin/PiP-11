@@ -396,6 +396,12 @@ void KB11::MARK(const u16 instr) {
 
 // MFPI 0065SS
 void KB11::MFPI(const u16 instr) {
+    // MFPI in UU mode prev UU mode operates as MFPD
+    if ((PSW & 0170000) == 0170000) {
+        MFPD(instr) ;
+        return ;
+    }
+
     u16 uval;
     if (!(instr & 0x38)) {
         const auto reg = REG(instr & 7);
