@@ -22,7 +22,7 @@ class KT11 {
             const auto i = (a >> 13) + (d ? 8 : 0); // page index
 
             if (pages[mode][i].nr()) {
-                SR[0] = (1 << 15) | 1 | (d ? 020 : 0) ;
+                SR[0] = 0140001 | (d ? 020 : 0) ;
                 SR[0] |= (a >> 12) & ~1;
                 SR[0] |= (mode << 5) ;
                 trap(INTFAULT) ;

@@ -145,13 +145,11 @@ void loop() {
             systime = nowtime;
         }
 
-        if (cpu.currentmode() == 0) {
-            if (cpu.stackTrap == STACK_TRAP_YELLOW) {
-                trap(INTBUS) ;
-            } else if (cpu.stackTrap == STACK_TRAP_RED) {
-                cpu.RR[6] = 4 ;
-                cpu.trapat(INTBUS) ;
-            }
+        if (cpu.stackTrap == STACK_TRAP_YELLOW) {
+            trap(INTBUS) ;
+        } else if (cpu.stackTrap == STACK_TRAP_RED) {
+            cpu.RR[6] = 4 ;
+            cpu.trapat(INTBUS) ;
         }
 
         if ((cpu.PSW & PSW_BIT_T) && !cpu.wasRTT) {

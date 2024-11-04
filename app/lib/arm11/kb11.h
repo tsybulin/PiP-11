@@ -177,7 +177,7 @@ class KB11 {
 
     typedef struct {
         u16 operand ;
-        OperandType operandType ; 
+        OperandType operandType ;
     } Operand ;
     
     template <auto len> inline Operand DA(const u16 instr) {
@@ -191,6 +191,10 @@ class KB11 {
     }
 
     inline void checkStackLimit(const u16 addr) {
+        if (currentmode()) {
+            return ;
+        }
+
         if (addr < (stacklimit + STACK_LIMIT_RED)) {
             stackTrap = STACK_TRAP_RED ;
         } else if (addr < (stacklimit + STACK_LIMIT_YELLOW)) {
@@ -807,10 +811,12 @@ class KB11 {
     void JMP(const u16 instr);
     void MARK(const u16 instr);
     void MFPI(const u16 instr);
+    void MFPD(const u16 instr);
     void MFPT();
     void MTPS(const u16 instr);
     void MFPS(const u16 instr);
     void MTPI(const u16 instr);
+    void MTPD(const u16 instr);
     void RTS(const u16 instr);
     void SWAB(u16);
     void SXT(u16);
