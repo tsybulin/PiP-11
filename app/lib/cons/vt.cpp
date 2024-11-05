@@ -241,19 +241,18 @@ void Console::vtDelete(int x, int y, int n, TScreenColor fg) {
     }
 }
 
-void Console::vtProcessText(char c) {
+void Console::vtProcessText(unsigned char c) {
     switch (c) {
         case 5: // ENQ => send answer-back string
         sendString("pip-11") ;
         break;
       
         case 7: // BEL => produce beep
-        //   sound_play_tone(config_get_audible_bell_frequency(), 
-        //                   config_get_audible_bell_duration(), 
-        //                   config_get_audible_bell_volume(), 
-        //                   false);
-        //   framebuf_flash_screen(config_get_visual_bell_color(), config_get_visual_bell_duration());
-            // graphics_set_flashmode(false, true) ;
+        case 0207: // BEL => produce beep
+            screen->Rotor(3, rotor) ;
+            if (rotor++ > 3) {
+                rotor = 0 ;
+            }
             break ;
       
         case 0x08:   // backspace
@@ -326,6 +325,7 @@ void Console::vtReset() {
     charset = &charset_G0;
     vt52_mode = false ;
     koi7n1 = false ;
+    rotor = 0 ;
 }
 
 void Console::vtCls() {
