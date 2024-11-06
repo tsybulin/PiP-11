@@ -33,7 +33,7 @@ void ODT::loop() {
         }
     }
 
-    char c ;
+    unsigned char c ;
     if (!queue_try_remove(&keyboard_queue, &c)) {
         return ;
     }

@@ -72,12 +72,13 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
     systime = CTimer::GetClockTicks64() ;
 	
     cpu.reset(bootmon ? BOOTMON_BASE : BOOTRK_BASE);
+    // cpu.reset(bootmon ? ABSLOADER_BASE : BOOTRK_BASE);
     cpu.cpuStatus = CPU_STATUS_ENABLE ;
 }
 
 jmp_buf trapbuf;
 
-void trap(u16 vec) { longjmp(trapbuf, vec); }
+void trap(u8 vec) { longjmp(trapbuf, vec); }
 
 void loop() {
     auto vec = setjmp(trapbuf);
@@ -103,17 +104,27 @@ void loop() {
             continue ;
         }
 
-        if ((cpu.itab[0].vec > 0) && (cpu.itab[0].pri > cpu.priority())) {
-            cpu.trapat(cpu.itab[0].vec);
-            cpu.popirq();
+        u8 vec = 0;
+        u8 pri = 0 ;
 
-            if (cpu.cpuStatus == CPU_STATUS_STEP) {
-                cpu.cpuStatus = CPU_STATUS_HALT ;
+        for (int i = 0; i < 255; i += 2) {
+            if (cpu.irqs[i] & IRQ_EMPTY) {
+                continue ;
             }
 
-            return; // exit from loop to reset trapbuf
+            if ((cpu.irqs[i] & 7) >= pri) {
+                vec = i ;
+                pri = cpu.irqs[i] & 7 ;
+            }
         }
-        
+
+        if (vec && (pri > cpu.priority())) {
+            cpu.trapat(vec) ;
+            cpu.irqs[vec] = IRQ_EMPTY ;
+            cpu.wtstate = false;
+            return ; // exit from loop to reset trapbuf
+        }
+
         if (!cpu.wtstate) {
             cpu.wasRTT = false ;
             cpu.stackTrap = STACK_TRAP_NONE ;

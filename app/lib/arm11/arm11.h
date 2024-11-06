@@ -3,7 +3,7 @@
 #include <circle/types.h>
 
 // interrupts
-enum INTVEC {
+enum INTVEC : u8 {
     INTBUS    = 0004,
     INTINVAL  = 0010,
     INTDEBUG  = 0014,
@@ -26,7 +26,7 @@ enum INTVEC {
     INTDLT    = 0304,
 };
 
-void trap(u16 num);
+void trap(u8 num);
 
 typedef int t_bool;
 

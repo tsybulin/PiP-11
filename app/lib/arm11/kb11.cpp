@@ -24,6 +24,12 @@ extern volatile bool interrupted ;
 void disasm(u16 ia);
 void fp11(int IR);
 
+KB11::KB11() {
+    for (int i = 0; i < 255; i += 2) {
+        irqs[i] = IRQ_EMPTY ;
+    }
+}
+
 void KB11::reset(u16 start) {
     for (int i = 0; i < BOOTSTRAP_LENGTH; i++) {
         unibus.write16(BOOTSTRAP_BASE + (i * 2), bootstrap[i]);
@@ -49,40 +55,31 @@ void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
     switch (a) {
         case 0777772: {
                 pirqr = v & 0177000 ;
-                u8 pl = 0 ;
+                u8 pia = 0 ;
                 if (pirqr & 01000) {
-                    pl = 042 ;
+                    pia = 042 ;
                 }
                 if (pirqr & 02000) {
-                    pl = 0104 ;
+                    pia = 0104 ;
                 }
                 if (pirqr & 04000) {
-                    pl = 0146 ;
+                    pia = 0146 ;
                 }
                 if (pirqr & 010000) {
-                    pl = 0210 ;
+                    pia = 0210 ;
                 }
                 if (pirqr & 020000) {
-                    pl = 0252 ;
+                    pia = 0252 ;
                 }
                 if (pirqr & 040000) {
-                    pl = 0314 ;
+                    pia = 0314 ;
                 }
                 if (pirqr & 0100000) {
-                    pl = 0356 ;
+                    pia = 0356 ;
                 }
 
-                if (pl > 0) {
-                    pirqr |= pl ;
-                }
-
-                if (pirqr == 0) {
-                    for (u8 i = 0; i < 32 - 1; i++) {
-                        if (itab[i].vec == INTPIR) {
-                            itab[i].vec = 0 ;
-                        }
-                    }
-                }
+                pirqr |= pia ;
+                irqs[INTPIR] = IRQ_EMPTY ;
             }
 
             break ;
@@ -199,7 +196,7 @@ void KB11::DIV(const u16 instr) {
 void KB11::ASH(const u16 instr) {
 	const auto reg = REG((instr >> 6) & 7);
 	const auto val1 = RR[reg];
-    Operand op = DA<2>(instr) ;
+    Operand op = DA<2>(instr, false) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 	auto val2 = read<2>(op.operand, dpage, false) & 077;
 	PSW &= 0xFFF0;
@@ -235,7 +232,7 @@ void KB11::ASH(const u16 instr) {
 
 void KB11::ASHC(const u16 instr) {
 	const auto reg = REG((instr >> 6) & 7) ;
-    Operand op = DA<2>(instr) ;
+    Operand op = DA<2>(instr, false) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 	auto nbits = read<2>(op.operand, dpage, false) & 077;
 
@@ -338,7 +335,7 @@ void KB11::FIS(const u16 instr)
 // MTPS
 
 void KB11::MTPS(const u16 instr) {
-    Operand op = DA<1>(instr) ;
+    Operand op = DA<1>(instr, false) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
     auto src = read<1>(op.operand, dpage, false);
     PSW = (PSW & 0177400) | (src & 0357);
@@ -367,7 +364,7 @@ void KB11::JSR(const u16 instr) {
     if (((instr >> 3) & 7) == 0) {
         trap(INTINVAL);
     }
-    Operand op = DA<2>(instr) ;
+    Operand op = DA<2>(instr, false) ;
     if (stackTrap == STACK_TRAP_RED) {
         return ;
     }
@@ -383,7 +380,7 @@ void KB11::JMP(const u16 instr) {
         // Registers don't have a virtual address so trap!
         trap(INTINVAL);
     } else {
-        RR[7] = DA<2>(instr).operand ;
+        RR[7] = DA<2>(instr, false).operand ;
     }
 }
 
@@ -411,7 +408,7 @@ void KB11::MFPI(const u16 instr) {
             uval = RR[reg];
         }
     } else {
-        const auto da = DA<2>(instr).operand;
+        const auto da = DA<2>(instr, false).operand;
         uval = unibus.read16(mmu.decode<false>(da, previousmode()));
     }
     push(uval);
@@ -429,7 +426,7 @@ void KB11::MFPD(const u16 instr) {
             uval = RR[reg];
         }
     } else {
-        const auto op = DA<2>(instr) ;
+        const auto op = DA<2>(instr, false) ;
         uval = unibus.read16(mmu.decode<false>(op.operand, previousmode(), denabled(), false));
     }
     push(uval);
@@ -536,13 +533,7 @@ void KB11::RESET() {
     unibus.reset();
     mmu.SR[0]=0;
     mmu.SR[3]=0;
-    PSW = 0 ;
-    for (u8 i = 0; i < 32 - 1; i++) {
-        if (itab[i].vec == INTPIR) {
-            itab[i].vec = 0;
-            itab[i].pri = 0 ;
-        }
-    }
+    PSW = PSW & PSW_BIT_PRIORITY ;
     wtstate = false ;
 }
 
@@ -948,56 +939,21 @@ void KB11::step() {
     }
 }
 
-void KB11::interrupt(u8 vec, u8 pri) {
+void KB11::interrupt(const u8 vec, const u8 pri) {
     if (vec & 1) {
         gprintf("Thou darst calling interrupt() with an odd vector number?\n");
         while(!interrupted);
     }
 
-    // fast path
-    if (itab[0].vec == 0) {
-        itab[0].vec = vec;
-        itab[0].pri = pri;
-        return;
+    if ((irqs[vec] & 7) > pri) {
+        return ;
     }
-    if (itab[0].vec == vec)
-      return;
-    u8 i = 0;
-    for (; i < 32; i++) {
-        if ((itab[i].vec == 0) || (itab[i].pri < pri)) {
-            break;
-        }
-    }
-    for (; i < 32; i++) {
-        if ((itab[i].vec == 0) || (itab[i].vec >= vec)) {
-            break;
-        }
-    }
-    if (i >= 32) {
-        gprintf("interrupt table full:%d\n",i);
-        for (i=0; i < 32; i++)
-          gprintf("%o %d:%d\r\n",itab[i].vec,i,32);
-        while(!interrupted) ;
-    }
-    for (u8 j = 31; j > i; j--) {
-        itab[j] = itab[j - 1];
-    }
-    itab[i].vec = vec;
-    itab[i].pri = pri;
+
+    irqs[vec] = pri ;
     wtstate = false;
 }
 
-// pop the top interrupt off the itab.
-void KB11::popirq() {
-    for (u8 i = 0; i < 32 - 1; i++) {
-        itab[i] = itab[i + 1];
-    }
-    itab[32 - 1].vec = 0;
-    itab[32 - 1].pri = 0;
-    wtstate = false;
-}
-
-void KB11::trapat(u16 vec) {
+void KB11::trapat(u8 vec) {
     if (vec & 1) {
         gprintf("Thou darst calling trapat() with an odd vector number?");
         while(!interrupted) ;

@@ -20,6 +20,8 @@
 #define STACK_LIMIT_YELLOW 0400
 #define STACK_LIMIT_RED    0340
 
+#define IRQ_EMPTY 0200
+
 enum CPUStatus : u8 {
     CPU_STATUS_UNKNOWN,
     CPU_STATUS_ENABLE,
@@ -45,13 +47,15 @@ class KB11 {
     friend API ;
     friend ODT ;
   public:
+    KB11() ;
+
     void step();
     void reset(u16 start);
     void pirq() ;
-    void trapat(u16 vec);
+    void trapat(u8 vec);
 
     // interrupt schedules an interrupt.
-    void interrupt(u8 vec, u8 pri);
+    void interrupt(const u8 vec, const u8 pri);
     void printstate();
     void ptstate();
 
@@ -85,17 +89,8 @@ class KB11 {
         return mmu.SR[3] & mask ;
     }
 
-    // pop the top interrupt off the itab.
-    void popirq();
-
-    struct intr {
-        u8 vec;
-        u8 pri;
-    };
-
     int rflag;
-
-    intr itab[32];
+    u8 irqs[256] ;
 
     KT11 mmu;
     UNIBUS unibus;
@@ -180,14 +175,14 @@ class KB11 {
         OperandType operandType ;
     } Operand ;
     
-    template <auto len> inline Operand DA(const u16 instr) {
+    template <auto len> inline Operand DA(const u16 instr, bool check_stack = true) {
         static_assert(len == 1 || len == 2);
         if (!(instr & 070)) {
             rflag++;
             return {(u16)(instr & 7), OPERAND_INSTRUCTION} ;
         }
 
-        return fetchOperand<len>(instr, true);
+        return fetchOperand<len>(instr, check_stack);
     }
 
     inline void checkStackLimit(const u16 addr) {
@@ -431,7 +426,7 @@ class KB11 {
     // CMP 02SSDD, CMPB 12SSDD
     template <auto l> void CMP(const u16 instr) {
         const auto src = SS<l>(instr);
-        Operand op = DA<l>(instr) ;
+        Operand op = DA<l>(instr, false) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 
         const auto dst = read<l>(op.operand, dpage, false);
@@ -757,7 +752,7 @@ class KB11 {
     // BIT 03SSDD, BITB 13SSDD
     template <auto l> void _BIT(const u16 instr) {
         const auto src = SS<l>(instr);
-        Operand op = DA<l>(instr) ;
+        Operand op = DA<l>(instr, false) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage, false);
         const auto result = src & dst;
@@ -766,7 +761,7 @@ class KB11 {
 
     // TST 0057DD, TSTB 1057DD
     template <auto l> void TST(const u16 instr) {
-        Operand op = DA<l>(instr) ;
+        Operand op = DA<l>(instr, false) ;
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         const auto dst = read<l>(op.operand, dpage, false);
         PSW &= PSW_MASK_COND;

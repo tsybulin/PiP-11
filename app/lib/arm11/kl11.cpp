@@ -6,7 +6,6 @@ extern "C" {
 #include <cons/cons.h>
 }
 
-
 extern KB11 cpu;
 
 extern volatile bool interrupted ;
@@ -73,8 +72,10 @@ void KL11::xpoll() {
 	}
 
 	if (xbuf) {
-		char c = xbuf & 0377 ;
-		queue_try_add(&console_queue, &c) ;
+		u8 c = xbuf & 0377 ;
+		if (!queue_try_add(&console_queue, &c)) {
+			return ;
+		}
 		xbuf = 0 ;
 	}
 
@@ -90,7 +91,7 @@ void KL11::rpoll() {
 		return ;
 	}
 
-	char c;
+	u8 c;
 	if (queue_try_remove(&keyboard_queue, &c)) {
 		rbuf = c & 0377 ;
 		rcsr |= 0200 ;
