@@ -68,7 +68,13 @@ class KB11 {
     constexpr inline u16 previousmode() { return ((PSW >> 12) & 3); }
 
     // returns the current CPU interrupt priority.
-    constexpr inline u16 priority() { return ((PSW >> 5) & 7); }
+    constexpr inline u8 priority() {
+        return cpuPriority ;
+    }
+
+    void inline updatePriority() {
+        cpuPriority = (PSW >> 5) & 7 ;
+    }
 
     constexpr inline bool denabled() {
         u8 mask = 0 ;
@@ -137,8 +143,8 @@ class KB11 {
     u16 oldPSW;
     u16 stacklimit, switchregister, displayregister, microbrreg ;
     u16 stackpointer[4]; // Alternate R6 (kernel, super, illegal, user)
-
     u16 pirqr = 0 ;
+    u8 cpuPriority = 0 ;
     
     inline bool N() { return PSW & PSW_BIT_N; }
     inline bool Z() { return PSW & PSW_BIT_Z; }
@@ -348,6 +354,7 @@ class KB11 {
         }
 
         PSW = newpsw ;
+        cpuPriority = (PSW >> 5) & 7 ;
 
         RR[6] = stackpointer[currentmode()];
     }

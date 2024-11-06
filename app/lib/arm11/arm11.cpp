@@ -125,6 +125,8 @@ void loop() {
             return ; // exit from loop to reset trapbuf
         }
 
+        cpu.updatePriority() ;
+
         if (!cpu.wtstate) {
             cpu.wasRTT = false ;
             cpu.stackTrap = STACK_TRAP_NONE ;

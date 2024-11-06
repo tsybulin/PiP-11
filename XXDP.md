@@ -44,13 +44,13 @@ Patch : check and replace Bell / Visual Bell (7 / 207) symbol with '*'
 | CKBDC0 | ? | 11/35/40/45 MARK INSTRUCTION TEST | passed |
 | CKBEC0 | ? | 11/35/40/45 RTI/RTT INSTRUCTION TEST | passed |
 | CKBFD0 | ? | 11/35/40/45 STACK LIMIT TEST | passed |
-| CKBGB0 | ? | 11/35/40/45 SPL INSTRUCTION TEST  | **passed?** |
+| CKBGB0 | ? | 11/35/40/45 SPL INSTRUCTION TEST  | passed |
 | CKBHB0 | ? | 11/45 REGISTER TEST | passed |
 | CKBIB0 | ? | 11/45 ASH INSTRUCTION TEST | passed |
 | CKBJA0 | ? | 11/45 ASHC INSTRUCTION TEST | passed |
 | CKBKA0 | ? | 11/45 MUL INSTRUCTION TEST | passed |
 | CKBLA0 | ? | 11/45 DIV INSTRUCTION TEST | passed |
-| CKBME0 | ? | 11/45 CPU TRAP TEST | **failed** |
+| CKBME0 | ? | 11/45 CPU TRAP TEST | passed |
 | CKBNC0 | ? | 11/45 PIRQ TEST | passed |
 | CKBOA0 | ? | 11/45 STATES (USER, KERNEL) TEST | **failed** |
 | CKTAB0 | 017412 | 11/45 KT11-C MEMORY MANAG. LOGIC TEST 1 | passed |
