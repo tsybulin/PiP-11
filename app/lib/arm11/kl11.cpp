@@ -56,7 +56,7 @@ void KL11::write16(u32 a, u16 v) {
 			break;
 
 		case KL11_XBUF:
-			xbuf = (v & 0377) | 0400 ;
+			xbuf = (v & 0177) | 0400 ;
 			xcsr &= ~0200 ;
 			break ;
 
