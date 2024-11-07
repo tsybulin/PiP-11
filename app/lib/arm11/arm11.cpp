@@ -133,12 +133,13 @@ void loop() {
         
         // if (clkdelay++ > 5000) {
         //     clkdelay = 0 ;
-        cpu.unibus.cons.xpoll();
+        cpu.unibus.cons.xpoll() ;
+        cpu.unibus.dl11.xpoll() ;
         // }
 
         if (kbdelay++ == 2000) {
-            cpu.unibus.cons.rpoll();
-            cpu.unibus.dl11.poll();
+            cpu.unibus.cons.rpoll() ;
+            cpu.unibus.dl11.rpoll() ;
             kbdelay = 0;
         }
         
