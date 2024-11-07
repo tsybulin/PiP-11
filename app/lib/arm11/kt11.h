@@ -7,7 +7,6 @@ class KT11 {
     public:
         u16 SR[4] = {0, 0, 0, 0}; // MM status registers
 
-        u16 T ;
         bool infotrap = false ;
 
         template <bool wr> inline u32 decode(const u16 a, const u16 mode, bool d = false, bool src = false) {

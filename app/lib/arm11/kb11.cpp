@@ -95,7 +95,6 @@ void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
             break ;
         case 0777570:
             displayregister = v;
-            mmu.T = v ;
             break;
         default:
             unibus.write16(a, v);
@@ -526,7 +525,7 @@ void KB11::RTT() {
 }
 
 void KB11::WAIT() {
-    if (currentmode()) {
+    if (currentmode() == 3) {
         return ;
     }
     wtstate = true;
