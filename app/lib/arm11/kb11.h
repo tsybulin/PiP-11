@@ -20,8 +20,6 @@
 #define STACK_LIMIT_YELLOW 0400
 #define STACK_LIMIT_RED    0340
 
-#define IRQ_EMPTY 0200
-
 enum CPUStatus : u8 {
     CPU_STATUS_UNKNOWN,
     CPU_STATUS_ENABLE,
@@ -67,11 +65,6 @@ class KB11 {
     // 0: kernel, 1: supervisor, 2: illegal, 3: user
     constexpr inline u16 previousmode() { return ((PSW >> 12) & 3); }
 
-    // returns the current CPU interrupt priority.
-    constexpr inline u8 priority() {
-        return cpuPriority ;
-    }
-
     void inline updatePriority() {
         cpuPriority = (PSW >> 5) & 7 ;
     }
@@ -96,8 +89,7 @@ class KB11 {
     }
 
     int rflag;
-    u8 irqs[256] ;
-
+    
     KT11 mmu;
     UNIBUS unibus;
     bool print=false;
@@ -139,12 +131,18 @@ class KB11 {
 
     volatile CPUStatus cpuStatus = CPU_STATUS_UNKNOWN ;
     u16 odtbpt = 0 ;
+    u8 interrupt_vector() ;
   private:
     u16 oldPSW;
     u16 stacklimit, switchregister, displayregister, microbrreg ;
     u16 stackpointer[4]; // Alternate R6 (kernel, super, illegal, user)
     u16 pirqr = 0 ;
+
     u8 cpuPriority = 0 ;
+    u8 irqs[256] ;
+    u8 irq_vec = 0;
+    bool irq_dirty = false ;
+    void calc_irqs() ;
     
     inline bool N() { return PSW & PSW_BIT_N; }
     inline bool Z() { return PSW & PSW_BIT_Z; }

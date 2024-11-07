@@ -26,7 +26,7 @@ void fp11(int IR);
 
 KB11::KB11() {
     for (int i = 0; i < 255; i += 2) {
-        irqs[i] = IRQ_EMPTY ;
+        irqs[i] = 0 ;
     }
 }
 
@@ -79,7 +79,8 @@ void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
                 }
 
                 pirqr |= pia ;
-                irqs[INTPIR] = IRQ_EMPTY ;
+                irqs[INTPIR] = 0 ;
+                irq_dirty = true ;
             }
 
             break ;
@@ -940,11 +941,45 @@ void KB11::step() {
             break;
             [[fallthrough]];
         default: // 15  17xxxx FPP instructions
-            //printf("invalid 17xxxx FPP instruction\n");
-            //return;
-            //printstate();
             trap(INTINVAL);
     }
+}
+
+void KB11::calc_irqs() {
+    irq_vec = 0 ;
+    u8 pri = 0 ;
+    
+    for (int i = 0; i < 255; i += 2) {
+        if (!irqs[i]) {
+            continue ;
+        }
+
+        if (irqs[i] >= pri) {
+            irq_vec = i ;
+            pri = irqs[i] ;
+        }
+    }
+
+    irq_dirty = false ;
+}
+
+u8 KB11::interrupt_vector() {
+    if (irq_dirty) {
+        calc_irqs() ;
+    }
+
+    if (!irq_vec) {
+        return 0 ;
+    }
+
+    if (irqs[irq_vec] > cpuPriority) {
+        u8 v = irq_vec ;
+        irqs[v] = 0 ;
+        irq_dirty = true ;
+        return v ;
+    }
+
+    return 0 ;
 }
 
 void KB11::interrupt(const u8 vec, const u8 pri) {
@@ -953,11 +988,14 @@ void KB11::interrupt(const u8 vec, const u8 pri) {
         while(!interrupted);
     }
 
-    if ((irqs[vec] & 7) > pri) {
+    if (irqs[vec] >= pri) {
+        wtstate = false;
         return ;
     }
 
     irqs[vec] = pri ;
+    irq_dirty = true ;
+
     wtstate = false;
 }
 

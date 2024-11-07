@@ -104,23 +104,10 @@ void loop() {
             continue ;
         }
 
-        u8 vec = 0;
-        u8 pri = 0 ;
+        u8 ivec = cpu.interrupt_vector() ;
 
-        for (int i = 0; i < 255; i += 2) {
-            if (cpu.irqs[i] & IRQ_EMPTY) {
-                continue ;
-            }
-
-            if ((cpu.irqs[i] & 7) >= pri) {
-                vec = i ;
-                pri = cpu.irqs[i] & 7 ;
-            }
-        }
-
-        if (vec && (pri > cpu.priority())) {
-            cpu.trapat(vec) ;
-            cpu.irqs[vec] = IRQ_EMPTY ;
+        if (ivec) {
+            cpu.trapat(ivec) ;
             cpu.wtstate = false;
             return ; // exit from loop to reset trapbuf
         }
@@ -144,7 +131,10 @@ void loop() {
         cpu.unibus.lp11.step() ;
         cpu.pirq() ;
         
+        // if (clkdelay++ > 5000) {
+        //     clkdelay = 0 ;
         cpu.unibus.cons.xpoll();
+        // }
 
         if (kbdelay++ == 2000) {
             cpu.unibus.cons.rpoll();
