@@ -52,7 +52,7 @@ Patch : check and replace Bell / Visual Bell (7 / 207) symbol with '*'
 | CKBLA0 | ? | 11/45 DIV INSTRUCTION TEST | passed |
 | CKBME0 | ? | 11/45 CPU TRAP TEST | passed |
 | CKBNC0 | ? | 11/45 PIRQ TEST | passed |
-| CKBOA0 | ? | 11/45 STATES (USER, KERNEL) TEST | **failed** |
+| CKBOA0 | ? | 11/45 STATES (USER, KERNEL) TEST | passed |
 | CKTAB0 | 017412 | 11/45 KT11-C MEMORY MANAG. LOGIC TEST 1 | passed |
 | CKTBC0 | ? | 11/45 KT11-C MEMORY MANAG. LOGIC TEST 2 | passed |
 | CKTCA0 | ? | 11/45 KT11-C MEMORY MANAG. LOGIC TEST 3 | passed |

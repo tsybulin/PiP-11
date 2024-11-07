@@ -346,12 +346,12 @@ class KB11 {
             newpsw &= ~PSW_BIT_T ;
         }
 
-        if (mode && !istrap) {
-            // newpsw = (newpsw & ~PSW_BIT_PRIORITY) | (PSW & PSW_BIT_PRIORITY) ;
-            // newpsw |= ((PSW & PSW_BIT_MODE) | (psw & PSW_BIT_MODE)) ;
-            // newpsw |= ((PSW & PSW_BIT_PRIV_MODE) | (psw & PSW_BIT_PRIV_MODE)) ;
-            newpsw |= ((PSW & PSW_BIT_REG_SET) | (psw & PSW_BIT_REG_SET)) ;
-        }
+        // if (mode && !istrap) {
+        //     // newpsw = (newpsw & ~PSW_BIT_PRIORITY) | (PSW & PSW_BIT_PRIORITY) ;
+        //     // newpsw |= ((PSW & PSW_BIT_MODE) | (psw & PSW_BIT_MODE)) ;
+        //     // newpsw |= ((PSW & PSW_BIT_PRIV_MODE) | (psw & PSW_BIT_PRIV_MODE)) ;
+        //     newpsw |= ((PSW & PSW_BIT_REG_SET) | (psw & PSW_BIT_REG_SET)) ;
+        // }
 
         PSW = newpsw ;
         cpuPriority = (PSW >> 5) & 7 ;

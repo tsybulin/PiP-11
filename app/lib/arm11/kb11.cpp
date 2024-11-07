@@ -411,8 +411,12 @@ void KB11::MFPI(const u16 instr) {
         const auto da = DA<2>(instr, false).operand;
         uval = unibus.read16(mmu.decode<false>(da, previousmode()));
     }
-    push(uval);
     setNZ<2>(uval);
+    checkStackLimit(RR[6] -2) ;
+    if (stackTrap == STACK_TRAP_RED) {
+        return ;
+    }
+    push(uval);
 }
 
 // MFPD 1065SS
@@ -429,8 +433,12 @@ void KB11::MFPD(const u16 instr) {
         const auto op = DA<2>(instr, false) ;
         uval = unibus.read16(mmu.decode<false>(op.operand, previousmode(), denabled(), false));
     }
-    push(uval);
     setNZ<2>(uval);
+    checkStackLimit(RR[6] -2) ;
+    if (stackTrap == STACK_TRAP_RED) {
+        return ;
+    }
+    push(uval);
 }
 
 // MTPI 0066DD
@@ -961,12 +969,13 @@ void KB11::trapat(u8 vec) {
 
     u16 PC = RR[7] ;
 
-    auto opsw = PSW;
+    u16 opsw = PSW;
     auto npsw = unibus.read16(mmu.decode<false>(vec, 0, mmu.SR[3] & 4, true) + 2);
     writePSW((npsw & ~PSW_BIT_PRIV_MODE) | (currentmode() << 12), true);
-    push(opsw);
-    push(RR[7]);
     RR[7] = unibus.read16(mmu.decode<false>(vec, 0, mmu.SR[3] & 4, true));       // Get from K-apace
+    RR[6] -= 4 ;
+    write16(RR[6]+2, opsw, mmu.SR[3] & 4) ;
+    write16(RR[6],   PC,   mmu.SR[3] & 4) ;
     wtstate = false;
 
     if (cpuStatus != CPU_STATUS_ENABLE) {
