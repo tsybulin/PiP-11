@@ -9,11 +9,13 @@ queue_t keyboard_queue ;
 queue_t console_queue ;
 
 Console::Console(CActLED *actLED, CDeviceNameService *deviceNameService, CInterruptSystem *interrupt, CTimer *timer) :
+    buzzPin(23, GPIOModeOutput),
     shutdownMode(ShutdownNone),
     usbhci(interrupt, timer, true),
     keyboard(0),
     koi7n1(false)
 {
+    buzzPin.Write(HIGH) ;
     pthis = this ;
 
     this->actLED = actLED ;
@@ -151,4 +153,20 @@ void Console::showRusLat() {
 			screen->SetPixel(x + xshift, y + 456, latrus[lrshift + y * LATRUS_WIDTH + x]) ;
         }
     }
+}
+
+static volatile TKernelTimerHandle kth = 0 ;
+
+static void buzzHandler(TKernelTimerHandle hTimer, void *pParam, void *pContext) {
+    ((CGPIOPin *) pParam)->Write(HIGH) ;
+    kth = 0 ;
+}
+
+void Console::beep() {
+    if (kth != 0) {
+        return ;
+    }
+
+    buzzPin.Write(LOW) ;
+    kth = timer->StartKernelTimer(10, buzzHandler, &buzzPin) ;
 }

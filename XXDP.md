@@ -31,7 +31,6 @@ Patch : check and replace Bell / Visual Bell (7 / 207) symbol with '*'
 | ZKAKA0 | ? | PDP11 INSTR. (SUBTR.) TEST 11 | passed |
 | ZKALA0 | ? | PDP11 INSTR. (JUMP) TEST 12 | passed |
 | ZKAMA0 | ? | PDP11 INSTR. (JSR,RIS RTI) TEST 13 | passed |
-| ZKLAE0 | ? | KL11 / DL11-A TELETYPE TEST | ? |
 
 
 ### C = 11/45
@@ -50,7 +49,7 @@ Patch : check and replace Bell / Visual Bell (7 / 207) symbol with '*'
 | CKBJA0 | ? | 11/45 ASHC INSTRUCTION TEST | passed |
 | CKBKA0 | ? | 11/45 MUL INSTRUCTION TEST | passed |
 | CKBLA0 | ? | 11/45 DIV INSTRUCTION TEST | passed |
-| CKBME0 | ? | 11/45 CPU TRAP TEST | passed |
+| ~~CKBME0~~ | ? | ~~11/45 CPU TRAP TEST~~ |  |
 | CKBNC0 | ? | 11/45 PIRQ TEST | passed |
 | CKBOA0 | ? | 11/45 STATES (USER, KERNEL) TEST | passed |
 | CKTAB0 | 017412 | 11/45 KT11-C MEMORY MANAG. LOGIC TEST 1 | passed |
@@ -59,4 +58,4 @@ Patch : check and replace Bell / Visual Bell (7 / 207) symbol with '*'
 | CKTDA0 | ? | 11/45 KT11-C MTPD/I TEST | passed |
 | CKTEB0 | ? | 11/45 KT11-C MFPD/I TEST | passed |
 | CKTEB0 | ? | 11/45 KT11-C MFPD/I TEST | passed |
-| CKTFD0 | ? | 11/45 KT11-C Abort logic TEST | **failed** |
+| ~~CKTFD0~~ | ? | ~~11/45 KT11-C Abort logic TEST~~ | **failed** |

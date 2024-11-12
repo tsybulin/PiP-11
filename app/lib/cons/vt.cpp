@@ -249,10 +249,7 @@ void Console::vtProcessText(unsigned char c) {
       
         case 7: // BEL => produce beep
         case 0207: // BEL => produce beep
-            screen->Rotor(3, rotor) ;
-            if (rotor++ > 3) {
-                rotor = 0 ;
-            }
+            beep() ;
             break ;
       
         case 0x08:   // backspace
@@ -325,7 +322,6 @@ void Console::vtReset() {
     charset = &charset_G0;
     vt52_mode = false ;
     koi7n1 = false ;
-    rotor = 0 ;
 }
 
 void Console::vtCls() {

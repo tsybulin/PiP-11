@@ -149,6 +149,7 @@ boolean CKernel::Initialize (void) {
 
 TShutdownMode CKernel::Run (void) {
 	console.vtCls() ;
+	console.beep() ;
 	CString txt ;
 	txt.Format("PiP-11/45: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
 	this->console.write(txt, 0, 6, YELLOW_COLOR) ;

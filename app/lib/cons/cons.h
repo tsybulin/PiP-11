@@ -7,7 +7,7 @@
 #include <circle/devicenameservice.h>
 #include <circle/usb/usbhcidevice.h>
 #include <circle/usb/usbkeyboard.h>
-
+#include <circle/gpiopin.h>
 #include "shutdown.h"
 #include <util/queue.h>
 
@@ -31,6 +31,7 @@ class Console {
 		void putCharVT(char c) ;
 		void showStatus() ;
 		void showRusLat() ;
+		void beep() ;
 
 		static Console* get() ;
 
@@ -43,6 +44,7 @@ class Console {
 		void sendEscapeSequence(u8 key) ;
 		void processKeyboardVT(u8 key) ;
 
+		CGPIOPin buzzPin ;
 		volatile TShutdownMode shutdownMode ;
 		CActLED *actLED ;
 		CDeviceNameService *deviceNameService ;
@@ -63,7 +65,6 @@ class Console {
 		bool cursor_shown = true, cursor_eol = false, saved_eol = false, vt52_mode = false ;
 		TScreenColor color_fg = YELLOW_COLOR, color_bg = BLACK_COLOR, saved_fg, saved_bg ;
 		u8 attr = 0, saved_attr, saved_charset_G0, saved_charset_G1, *charset, charset_G0, charset_G1 ;
-		u8 rotor = 0;
 
 		void putCharVT100(char c) ;
 		void putCharVT52(char c) ;
