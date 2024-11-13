@@ -16,6 +16,8 @@
 void gprintf(const char *__restrict format, ...) ;
 void iprintf(const char *__restrict format, ...) ;
 
+#define CONS_TEXT_COLOR COLOR16 (170 >> 3, 170 >> 3, 170 >> 3)
+
 class Console {
 	public:
 		Console(CActLED *actLED, CDeviceNameService *deviceNameService, CInterruptSystem *interrupt, CTimer *timer);
@@ -63,7 +65,7 @@ class Console {
 		int cursor_col = 0, cursor_row = 0, saved_col = 0, saved_row = 0;
 		int scroll_region_start = 0, scroll_region_end = CONS_LAST_ROW ;
 		bool cursor_shown = true, cursor_eol = false, saved_eol = false, vt52_mode = false ;
-		TScreenColor color_fg = YELLOW_COLOR, color_bg = BLACK_COLOR, saved_fg, saved_bg ;
+		TScreenColor color_fg = CONS_TEXT_COLOR, color_bg = BLACK_COLOR, saved_fg, saved_bg ;
 		u8 attr = 0, saved_attr, saved_charset_G0, saved_charset_G1, *charset, charset_G0, charset_G1 ;
 
 		void putCharVT100(char c) ;

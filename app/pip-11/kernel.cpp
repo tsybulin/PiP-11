@@ -86,10 +86,20 @@ CKernel::CKernel (void)
 	i2cMaster(1),
 
 	console(&actLED, &deviceNameService, &interrupt, &timer),
-	multiCore(CMemorySystem::Get(), &console, &cpuThrottle)
+	multiCore(CMemorySystem::Get(), &console, &cpuThrottle),
+	screenBrightness(100)
 {
 	pSerial = &serial ;
 	pI2cMaster = &i2cMaster ;
+
+	unsigned sbr = 0 ;
+	CKernelOptions* kops = CKernelOptions::Get() ;
+	if (kops) {
+		sbr = kops->GetBacklight() ;
+		if (sbr > 0) {
+			screenBrightness = sbr ;
+		}
+	}
 }
 
 CKernel::~CKernel (void) {
@@ -152,7 +162,7 @@ TShutdownMode CKernel::Run (void) {
 	console.beep() ;
 	CString txt ;
 	txt.Format("PiP-11/45: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
-	this->console.write(txt, 0, 6, YELLOW_COLOR) ;
+	this->console.write(txt, 0, 6, CONS_TEXT_COLOR) ;
 
 	if (FR_OK != f_mount(&fileSystem, DRIVE, 1)) {
 		gprintf("SD Card not inserted or SD Card error!") ;
@@ -182,7 +192,7 @@ TShutdownMode CKernel::Run (void) {
 	bool selected = false ;
 	bool paused = false ;
 
-	console.write("> SHOW CONFIGURATION", 0, 8, YELLOW_COLOR) ;
+	console.write("> SHOW CONFIGURATION", 0, 8, CONS_TEXT_COLOR) ;
 
 	for (int y = 0; y < MODEL_HEIGHT; y++) {
 		for (int x = 0; x < MODEL_WIDTH; x ++) {
@@ -206,11 +216,11 @@ TShutdownMode CKernel::Run (void) {
         CString tmp ;
 		tmp.Format("%d. ", i) ;
 		tmp.Append(configurations[i].name) ;
-		console.write(tmp, 0, row++, i == 0 ? BRIGHT_YELLOW_COLOR : YELLOW_COLOR) ;
+		console.write(tmp, 0, row++, i == 0 ? GREEN_COLOR : CONS_TEXT_COLOR) ;
     }
 
     
-	console.write("BOOT>", 0, ++row, YELLOW_COLOR) ;
+	console.write("BOOT>", 0, ++row, CONS_TEXT_COLOR) ;
 
 	unsigned int timeout = timer.GetTicks() + 600 ;
 
@@ -259,13 +269,29 @@ TShutdownMode CKernel::Run (void) {
 					selected = true ;
 					break;
 
+				case KEY_F10:
+					if (screenBrightness < 180) {
+						screenBrightness += 10 ;
+						screen.GetFrameBuffer()->SetBacklightBrightness(screenBrightness) ;
+						iprintf("Brightness %d", screenBrightness) ;
+					}
+					break;
+
+				case KEY_F9:
+					if (screenBrightness > 50) {
+						screenBrightness -= 10 ;
+						screen.GetFrameBuffer()->SetBacklightBrightness(screenBrightness) ;
+						iprintf("Brightness %d", screenBrightness) ;
+					}
+					break;
+
 				case KEY_F11: {
 						ci = 0 ;
 						selected = false ;
 						paused = true ;
 
 						console.vtCls() ;
-						console.write("FIRMWARE> ", 0, 0, YELLOW_COLOR) ;
+						console.write("FIRMWARE> ", 0, 0, CONS_TEXT_COLOR) ;
 
 						CScheduler scheduler ;
 
@@ -281,11 +307,11 @@ TShutdownMode CKernel::Run (void) {
 							break;
 						}
 
-						console.write("> SHOW IP", 0, 2, YELLOW_COLOR) ;
+						console.write("> SHOW IP", 0, 2, CONS_TEXT_COLOR) ;
 
 						CString ips ;
 						net.GetConfig()->GetIPAddress()->Format(&ips);
-						console.write(ips, 0, 4, YELLOW_COLOR) ;
+						console.write(ips, 0, 4, CONS_TEXT_COLOR) ;
 
 						new Firmware(&net, &fileSystem) ;
 						while (!interrupted) {
@@ -304,9 +330,9 @@ TShutdownMode CKernel::Run (void) {
 
 		if (!paused) {
 			txt.Format("BOOT %d s.>", (timeout - timer.GetTicks()) / 100) ;
-			this->console.write(txt, 0, row, YELLOW_COLOR) ;
+			this->console.write(txt, 0, row, CONS_TEXT_COLOR) ;
 		} else {
-			this->console.write("BOOT>        ", 0, row, YELLOW_COLOR) ;
+			this->console.write("BOOT>        ", 0, row, CONS_TEXT_COLOR) ;
 		}
 	}
 	

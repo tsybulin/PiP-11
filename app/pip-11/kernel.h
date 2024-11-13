@@ -49,6 +49,7 @@ class CKernel {
 
 		Console				console ;
 		MultiCore			multiCore ;
+		unsigned            screenBrightness ;
 } ;
 
 #endif
