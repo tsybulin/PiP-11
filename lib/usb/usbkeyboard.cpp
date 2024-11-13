@@ -155,7 +155,8 @@ void CUSBKeyboardDevice::UnregisterKeyStatusHandlerRaw (void)
 	m_pKeyStatusHandlerRawArg = 0;
 }
 
-boolean CUSBKeyboardDevice::SetLEDs (u8 ucStatus) {
+boolean CUSBKeyboardDevice::SetLEDs (u8 ucStatus)
+{
 	DMA_BUFFER (u8, Buffer, 1) = {ucStatus};
 
 	if (GetHost ()->ControlMessage (GetEndpoint0 (),

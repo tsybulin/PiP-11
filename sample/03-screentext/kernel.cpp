@@ -88,11 +88,8 @@ TShutdownMode CKernel::Run (void)
 	debug_hexdump ((void *) 0x100, 128, FromKernel);
 
 	m_Logger.Write (FromKernel, LogNotice, "The following assertion will fail");
-	// assert (1 == 2);
+	assert (1 == 2);
 #endif
-	while (1) {
-		
-	}
 
 	return ShutdownHalt;
 }

@@ -40,7 +40,7 @@ enum TSpecialKey
 	KeyReturn,
 	KeyInsert,
 	KeyHome,
-    KeyCtrlHome,
+        KeyCtrlHome,
 	KeyPageUp,
 	KeyCtrlPageUp,
 	KeyDelete,

@@ -139,6 +139,7 @@ struct TScreenStatus
 	unsigned	nCursorX;
 	unsigned	nCursorY;
 	boolean		bCursorOn;
+	boolean		bCursorBlock;
 	TScreenColor	Color;
 	TScreenColor	BackgroundColor;
 	boolean		ReverseAttribute;
@@ -221,6 +222,9 @@ public:
 	unsigned getCharWidth() ;
 	unsigned getCharHeight() ;
 	void ClearScreen() ;
+	/// \brief Implements a block cursor instead of the default underline
+	void SetCursorBlock(boolean bCursorBlock);
+
 private:
 #ifndef SCREEN_HEADLESS
 	void Write (char chChar);
@@ -283,6 +287,7 @@ private:
 	unsigned	 m_nCursorX;
 	unsigned	 m_nCursorY;
 	boolean		 m_bCursorOn;
+	boolean		 m_bCursorBlock;
 	boolean		 m_bCursorVisible;
 	TScreenColor	 m_Color;
 	TScreenColor	 m_BackgroundColor;
