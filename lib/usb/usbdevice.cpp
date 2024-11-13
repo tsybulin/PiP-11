@@ -436,7 +436,7 @@ boolean CUSBDevice::Initialize (void)
 
 		if (pChild == 0)
 		{
-			LogWrite (LogWarning, "Function is not supported");
+			LogWrite (LogDebug, "Function is not supported");
 
 			continue;
 		}
