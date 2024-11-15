@@ -41,6 +41,7 @@ void Console::init(CScreenDevice *screen) {
     saved_charset_G1 = CS_GRAPHICS;
     charset = &charset_G0;
     koi7n1 = false ;
+    screenInverted = false ;
 
     bool updated = this->usbhci.UpdatePlugAndPlay() ;
     if (updated && this->keyboard == 0) {

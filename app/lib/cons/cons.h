@@ -67,6 +67,7 @@ class Console {
 		bool cursor_shown = true, cursor_eol = false, saved_eol = false, vt52_mode = false ;
 		TScreenColor color_fg = CONS_TEXT_COLOR, color_bg = BLACK_COLOR, saved_fg, saved_bg ;
 		u8 attr = 0, saved_attr, saved_charset_G0, saved_charset_G1, *charset, charset_G0, charset_G1 ;
+		bool screenInverted = false ;
 
 		void putCharVT100(char c) ;
 		void putCharVT52(char c) ;
@@ -83,6 +84,7 @@ class Console {
 		void vtReset() ;
 		void vtProcessCommand(char start_char, char final_char, u8 num_params, u8 *params) ;
 		void putStringVT100(const char *c) ;
+		void vtInvertScreen(bool enabled) ;
 }  ;
 
 #define TEXTMODE_COLS 80

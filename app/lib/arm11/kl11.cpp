@@ -2,10 +2,6 @@
 
 #include "kb11.h"
 
-extern "C" {
-#include <cons/cons.h>
-}
-
 extern KB11 cpu;
 
 extern volatile bool interrupted ;

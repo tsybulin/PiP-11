@@ -308,7 +308,7 @@ void Console::vtReset() {
     saved_col = 0;
     saved_row = 0;
     cursor_shown = true;
-    color_fg = YELLOW_COLOR ;
+    color_fg = CONS_TEXT_COLOR ;
     color_bg = 0;
     scroll_region_start = 0;
     scroll_region_end = CONS_LAST_ROW ;
@@ -322,12 +322,30 @@ void Console::vtReset() {
     charset = &charset_G0;
     vt52_mode = false ;
     koi7n1 = false ;
+    screenInverted = false ;
 }
 
 void Console::vtCls() {
     for (int r = CONS_TOP; r < TEXTMODE_ROWS; r++) {
         for (int c = 0; c < TEXTMODE_COLS; c++) {
             screen->displayChar(' ', c, r) ;
+        }
+    }
+}
+
+void Console::vtInvertScreen(bool enabled) {
+    if (enabled == screenInverted) {
+        return ;
+    }
+
+    screenInverted = enabled ;
+    TScreenColor t = color_fg ;
+    color_fg = color_bg ;
+    color_bg = t ;
+    for (unsigned int y = 0; y < screen->GetHeight() ; y++) {
+        for (unsigned int x = 0; x < screen->GetWidth(); x++) {
+            t = screen->GetPixel(x, y) ;
+            screen->SetPixel(x, y, t == color_bg ? color_bg : color_fg) ;
         }
     }
 }
@@ -354,7 +372,7 @@ void Console::vtProcessCommand(char start_char, char final_char, u8 num_params, 
                     break;
               
                 case 5: // invert screen
-                    // framebuf_set_screen_inverted(enabled);
+                    vtInvertScreen(enabled);
                     break;
           
                 case 6: // origin mode
@@ -492,7 +510,7 @@ void Console::vtProcessCommand(char start_char, char final_char, u8 num_params, 
         for (i = 0; i < num_params; i++) {
             int p = params[i] ;
             if (p == 0) {
-                color_fg = YELLOW_COLOR;
+                color_fg = CONS_TEXT_COLOR;
                 color_bg = 0;
                 attr     = 0 ;
                 cursor_shown = true;
@@ -519,7 +537,7 @@ void Console::vtProcessCommand(char start_char, char final_char, u8 num_params, 
                 color_fg = params[i + 2] & 0x0F;
                 i += 2;
             } else if (p == 39) {
-                color_fg = YELLOW_COLOR;
+                color_fg = CONS_TEXT_COLOR;
             } else if (p >= 40 && p <= 47) {
                 color_bg = p - 40 ;
             } else if (p == 48 && num_params >= i + 2 && params[i + 1] == 5) {
@@ -861,11 +879,11 @@ void Console::putCharVT52(char c) {
                     break;
 
                 case 'p':
-                    // framebuf_set_screen_inverted(true);
+                    vtInvertScreen(true);
                     break;
 
                 case 'q':
-                    // framebuf_set_screen_inverted(false);
+                    vtInvertScreen(false);
                     break;
 
                 case 'v':
