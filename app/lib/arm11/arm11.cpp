@@ -52,7 +52,7 @@ int f_xgetc(FIL *fl)
 }
 
 void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
-	if (cpu.unibus.rk11.rk05.obj.lockid) {
+	if (cpu.unibus.rk11.crtds[0].obj.lockid) {
 		return ;
     }
 
@@ -62,12 +62,17 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
 		while (!interrupted) ;
 	}
 
-    fr = f_open(&cpu.unibus.rk11.rk05, rkfile, FA_READ | FA_WRITE);
-	if (FR_OK != fr && FR_EXIST != fr) {
-		gprintf("f_open(%s) error: (%d)", rkfile, fr);
-		while (!interrupted) ;
-	}
-    
+    for (u8 crtd = 0; crtd < 8; crtd++) {
+        char name[20] = "PIP-11/RK11_00.RK05" ;
+        name[13] = '0' + crtd ;
+
+        fr = f_open(&cpu.unibus.rk11.crtds[crtd], !crtd ? rkfile : name, FA_READ | FA_WRITE);
+        if (FR_OK != fr && FR_EXIST != fr) {
+            gprintf("f_open(%s) error: (%d)", !crtd ? rkfile : name, fr);
+            while (!interrupted) ;
+        }
+    }
+
     clkdiv = (u64)1000000 / (u64)60;
     systime = CTimer::GetClockTicks64() ;
 	
@@ -104,6 +109,11 @@ void loop() {
             continue ;
         }
 
+        // u64 now = CTimer::GetClockTicks64() ;
+        // while (CTimer::GetClockTicks64() - now < 5) {
+        //     // ;
+        // }
+        
         u8 ivec = cpu.interrupt_vector() ;
 
         if (ivec) {

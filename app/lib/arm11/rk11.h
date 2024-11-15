@@ -8,7 +8,7 @@
 class RK11 {
 
   public:
-	  FIL rk05;
+	  FIL crtds[8];
     u16 read16(u32 a);
     void write16(u32 a, u16 v);
     void reset();
@@ -18,7 +18,8 @@ class RK11 {
   private:
 	  u16 rkds, rker, rkcs, rkwc, rkba, rkda;
 	  UINT bcnt;
-    u32 drive, sector, surface, cylinder,rkba18,rkdelay;
+    u32 sector, surface, cylinder,rkba18,rkdelay;
+    u8 drive ;
 
     void rknotready();
     void rkready();

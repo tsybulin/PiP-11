@@ -14,27 +14,27 @@ enum RKERROR {
 
 u16 RK11::read16(const u32 a) {
     switch (a) {
-    case RK11_CSR:
-        // 777400 Drive Status
-        return rkds;
-    case 0777402:
-        // 777402 Error Register
-        return rker;
-    case 0777404:
-        // 777404 Control Status
-        return rkcs & 0xfffe; // go bit is read only
-    case 0777406:
-        // 777406 Word Count
-        return rkwc;
-    case 0777410:
-        // Bus address
-        return rkba;
-    case 0777412:
-        return rkda;
-    default:
-        //printf("rk11::read16 invalid read %06o\n", a);
-        trap(INTBUS);
-    }
+        case RK11_CSR:
+            // 777400 Drive Status
+            return rkds;
+        case 0777402:
+            // 777402 Error Register
+            return rker;
+        case 0777404:
+            // 777404 Control Status
+            return rkcs & 0xfffe; // go bit is read only
+        case 0777406:
+            // 777406 Word Count
+            return rkwc;
+        case 0777410:
+            // Bus address
+            return rkba;
+        case 0777412:
+            return rkda;
+        default:
+            //printf("rk11::read16 invalid read %06o\n", a);
+            trap(INTBUS);
+        }
     return 0;
 }
 
@@ -50,63 +50,63 @@ void RK11::rkready() {
 }
 
 void RK11::step() {
-
     if ((rkcs & 01) == 0) {
         // no GO bit
-        return;
+        return ;
     }
 
     switch ((rkcs >> 1) & 7) {
-    case 0:
-        // controller reset
-        reset();
-        break;
-    case 1: // write
-    case 2: // read
-    case 3:
-        rknotready();
-        seek();
-        readwrite();
-        return;
-    case 6: // Drive Reset - falls through to be finished as a seek
-        rker = 0;
-        [[fallthrough]];
-    case 4: // Seek (and drive reset) - complete immediately
-        rknotready();
-        if (drive != 0) {
-            rker |= 0x80; // NXD
-            rkready();
-        	cpu.interrupt(INTRK, 5);
+        case 0:
+            // controller reset
+            reset();
+            break;
+        case 1: // write
+        case 2: // read
+        case 3:
+            rknotready();
+            seek();
+            readwrite();
             return;
-        }
-        seek();
-        rkcs &= ~0x2000; // Clear search complete - reset by rk11_seekEnd
-        rkcs |= 0x80;    // set done - ready to accept new command
-	    if (rkcs & (1 << 6))
-        	cpu.interrupt(INTRK, 5);
-        break;
-    case 5: // Read Check
-        break;
-    case 7: // Write Lock - not implemented :-(
-        break;
-    default:
-        gprintf("unimplemented RK05 operation %06o\n", ((rkcs & 017) >> 1));
-	    while (1) ;
+        case 6: // Drive Reset - falls through to be finished as a seek
+            rker = 0;
+            [[fallthrough]];
+        case 4: // Seek (and drive reset) - complete immediately
+            rknotready();
+            // if (drive != 0) {
+            //     rker |= 0x80; // NXD
+            //     rkready();
+            //     cpu.interrupt(INTRK, 5);
+            //     return;
+            // }
+            seek();
+            rkcs &= ~0x2000; // Clear search complete - reset by rk11_seekEnd
+            rkcs |= 0x80;    // set done - ready to accept new command
+            if (rkcs & (1 << 6))
+                cpu.interrupt(INTRK, 5);
+            break;
+        case 5: // Read Check
+            break;
+        case 7: // Write Lock - not implemented :-(
+            break;
+        default:
+            gprintf("unimplemented RK05 operation %06o\n", ((rkcs & 017) >> 1));
+            while (1) ;
     }
 }
 
 void RK11::readwrite() {
-    
     if (rkwc == 0) {
-       rkready();
+        rkready();
         if (rkcs & (1 << 6)) {
-            cpu.interrupt(INTRK, 5);
+            cpu.interrupt(INTRK, 5) ;
         }
         return;
     }
 
-    if (rkdelay++ < 60)          // Delay READ/WRITE by 50 cpu cycles. needed for DOS/BATCH
-        return;
+    if (rkdelay++ < 60) {         // Delay READ/WRITE by 50 cpu cycles. needed for DOS/BATCH
+        return ;
+    }
+
     rkdelay = 0;
 
     bool w = ((rkcs >> 1) & 7) == 1;
@@ -123,14 +123,12 @@ void RK11::readwrite() {
 	    rkba18 = rkba | (rkcs & 060) << 12;     // Include ext addr bits
         if (w) {
             u16 val = cpu.unibus.read16(rkba18);
-            u8 buf[2] = {static_cast<u8>(val & 0xff),
-                              static_cast<u8>(val >> 8)};
-	        f_write(&rk05, buf, 2, &bcnt); }
+            u8 buf[2] = {static_cast<u8>(val & 0xff), static_cast<u8>(val >> 8)} ;
+	        f_write(&crtds[drive], buf, 2, &bcnt); }
 	    else {
 		    u8 buf[2];
-		    f_read(&rk05, buf, 2, &bcnt);
-            cpu.unibus.write16(rkba18, static_cast<u16>(buf[0]) |
-                                         static_cast<u16>(buf[1]) << 8);
+		    f_read(&crtds[drive], buf, 2, &bcnt);
+            cpu.unibus.write16(rkba18, static_cast<u16>(buf[0]) | static_cast<u16>(buf[1]) << 8);
         }
         rkba += 2;
         rkwc++;
@@ -138,14 +136,17 @@ void RK11::readwrite() {
 		    SETMASK(rkcs, rkcs + 020, 060);
 		}
 
-    if (w && i<256) {                           // Fill remainder of sector with zero
-        for (i=i;i<256;i++)
-          f_write(&rk05,&zero,2,&bcnt);
+    if (w && i < 256) {                           // Fill remainder of sector with zero
+        for (i=i; i<256; i++)
+          f_write(&crtds[drive], &zero, 2, &bcnt) ;
     }
 
-    if (w)
-        f_sync(&rk05);
+    if (w) {
+        f_sync(&crtds[drive]) ;
+    }
+
     sector++;
+
     if (sector > 013) {
         sector = 0;
         surface++;
@@ -154,7 +155,7 @@ void RK11::readwrite() {
             cylinder++;
             if (cylinder > 0312) {
                 rker |= RKOVR;
-                return;
+                return ;
             }
         }
     }
@@ -162,7 +163,7 @@ void RK11::readwrite() {
 
 void RK11::seek() {
     const u32 pos = (cylinder * 24 + surface * 12 + sector) * 512;
-	if (FR_OK != (fr = f_lseek(&rk05, pos))) {
+	if (FR_OK != (fr = f_lseek(&crtds[drive], pos))) {
 		gprintf(("rkstep: failed to seek\r\n"));
 		while (1) ;
 	}
@@ -171,24 +172,24 @@ void RK11::seek() {
 void RK11::write16(const u32 a, const u16 v) {
     // printf("rk11:write16: %06o %06o\n", a, v);
     switch (a) {
-    case 0777404:
-        rkcs =  (v & ~0xf080) | (rkcs & 0xf080); // Bits 7 and 12 - 15 are read only
-        break;
-    case 0777406:
-        rkwc = v;
-        break;
-    case 0777410:
-        rkba = v;
-        break;
-    case 0777412:
-        rkda = v;
-        drive = v >> 13;
-        cylinder = (v >> 5) & 0377;
-        surface = (v >> 4) & 1;
-        sector = v & 15;
-        break;
-    default:
-        gprintf("rk11::write16 invalid write %06o: %06o\n", a, v);
+        case 0777404:
+            rkcs =  (v & ~0xf080) | (rkcs & 0xf080); // Bits 7 and 12 - 15 are read only
+            break;
+        case 0777406:
+            rkwc = v;
+            break;
+        case 0777410:
+            rkba = v;
+            break;
+        case 0777412:
+            rkda = v;
+            drive = v >> 13;
+            cylinder = (v >> 5) & 0377;
+            surface = (v >> 4) & 1;
+            sector = v & 15;
+            break;
+        default:
+            gprintf("rk11::write16 invalid write %06o: %06o\n", a, v);
     }
 }
 
