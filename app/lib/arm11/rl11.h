@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class RL11 {
 
 public:
-FIL rl02;
+FIL disks[2];
 void write16(u32 a, u16 v);
 u16 read16(u32 a);
 void reset();
@@ -51,7 +51,8 @@ void rlnotready();
 void rlready();
 
 private:
-    u16 drive, drun, dtype;
+    u16 drun, dtype;
+    u8 drive ;
     u16 RLWC, RLDA, RLMP, RLCS, RLBAE;
     u32 RLBA;
     unsigned int bcnt;

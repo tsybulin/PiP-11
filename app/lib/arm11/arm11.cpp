@@ -56,17 +56,22 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
 		return ;
     }
 
-	FRESULT fr = f_open(&cpu.unibus.rl11.rl02,rlfile, FA_READ | FA_WRITE);
-	if (FR_OK != fr && FR_EXIST != fr) {
-		gprintf("f_open(%s) error: (%d)", rlfile, fr);
-		while (!interrupted) ;
-	}
+    for (u8 drv = 0; drv < 2; drv++) {
+        char name[20] = "PIP-11/RL11_00.RL02" ;
+        name[13] = '0' + drv ;
+
+	    FRESULT fr = f_open(&cpu.unibus.rl11.disks[drv], !drv ? rlfile : name, FA_READ | FA_WRITE);
+        if (FR_OK != fr && FR_EXIST != fr) {
+            gprintf("f_open(%s) error: (%d)", !drv ? rlfile : name, fr) ;
+            while (!interrupted) ;
+        }
+    }
 
     for (u8 crtd = 0; crtd < 8; crtd++) {
         char name[20] = "PIP-11/RK11_00.RK05" ;
         name[13] = '0' + crtd ;
 
-        fr = f_open(&cpu.unibus.rk11.crtds[crtd], !crtd ? rkfile : name, FA_READ | FA_WRITE);
+        FRESULT fr = f_open(&cpu.unibus.rk11.crtds[crtd], !crtd ? rkfile : name, FA_READ | FA_WRITE);
         if (FR_OK != fr && FR_EXIST != fr) {
             gprintf("f_open(%s) error: (%d)", !crtd ? rkfile : name, fr);
             while (!interrupted) ;

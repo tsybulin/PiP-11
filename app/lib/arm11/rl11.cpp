@@ -66,8 +66,7 @@ extern u64 systime;
 #define GET_TRACK(x)    (((x) >> RLDA_V_TRACK) & RLDA_M_TRACK)
 #define GET_DA(x)       ((GET_TRACK (x) * RL_NUMSC) + GET_SECT (x))
 
-enum
-{
+enum {
     RLOPI = (1 << 10),
     RLDCRC = (1 << 11),
     RLHCRC = (1 << 11),
@@ -76,10 +75,9 @@ enum
     RLHNF = (1 << 12),
     RLDE = (1 << 14),
     RLCERR = (1 << 15)
-};
+} ;
 
-enum
-{
+enum {
     DEV_RL_BAE = 0774420,  // RL11 Bus Address Extension Register
     DEV_RL_MP = 0774406,   // RL11 Multipurpose Register
     DEV_RL_DA = 0774404,   // RL11 Disk Address
@@ -88,78 +86,58 @@ enum
 };
 
 
-u16 RL11::read16(u32 a)
-{
-    //printf("Read:%06o\r\n", a);
-    switch (a)
-    {
-    case DEV_RL_CS:  // Control Status (OR in the bus extension)
-        return RLCS;
-    case DEV_RL_MP:  // Multi Purpose
-        return RLMP;
-    case DEV_RL_BA:  // Bus Address
-        return RLBA & 0xFFFF;
-    case DEV_RL_DA:  // Disk Address
-        return RLDA;
-    case DEV_RL_BAE:
-        return (RLBA & 0600000) >> 16;
-    default:
-        //printf("%% rl11::read16 invalid read");
-        trap(INTBUS);
-        //panic();
-        return 0;
+u16 RL11::read16(u32 a) {
+    switch (a) {
+        case DEV_RL_CS:  // Control Status (OR in the bus extension)
+            return RLCS;
+        case DEV_RL_MP:  // Multi Purpose
+            return RLMP;
+        case DEV_RL_BA:  // Bus Address
+            return RLBA & 0xFFFF;
+        case DEV_RL_DA:  // Disk Address
+            return RLDA;
+        case DEV_RL_BAE:
+            return (RLBA & 0600000) >> 16;
+        default:
+            trap(INTBUS);
+            return 0;
     }
 }
 
-void RL11::rlnotready()
-{
-#ifdef PIN_OUT_DISK_ACT
-    digitalWrite(PIN_OUT_DISK_ACT, LED_ON);
-#endif
-    //RLDS &= ~(1 << 6);
+void RL11::rlnotready() {
     RLCS &= ~(1 << 7);
 }
 
-void RL11::rlready()
-{
-    //RLDS |= 1 << 6;
+void RL11::rlready() {
     RLCS |= (1 << 7) | 1;
-    if (RLCS & (1 << 6))
-    {
-        cpu.interrupt(INTRL, 5);
+    if (RLCS & (1 << 6)) {
+        cpu.interrupt(INTRL, 5) ;
     }
-#ifdef PIN_OUT_DISK_ACT
-    digitalWrite(PIN_OUT_DISK_ACT, LED_OFF);
-#endif
 }
 
-void rlerror(u16 e)
-{
+void rlerror(u16 e) {
 }
 
-void RL11::step()
-{
+void RL11::step() {
     if (!drun)
         return;
     if (drun-- > 1)
         return;
 
-    drive = (RLCS >> 8) & 3;
     RLCS &= ~1;
 
     bool w;
-    switch ((RLCS & 017) >> 1)
-    {
-    case 5:  // write data
-        w = true;
-        break;
-    case 6:  // read data
-    case 7:  // read no header check
-        w = false;
-        break;
-    default:
-        gprintf("%% unimplemented RL01/2 operation");  //  %#o", ((r.RLCS & 017) >> 1)))
-        while (1);
+    switch ((RLCS & 017) >> 1) {
+        case 5:  // write data
+            w = true;
+            break;
+        case 6:  // read data
+        case 7:  // read no header check
+            w = false;
+            break;
+        default:
+            gprintf("%06o unimplemented RL01/2 operation", (RLCS & 017) >> 1) ;
+            return ;
     }
 
 retry:
@@ -167,28 +145,22 @@ retry:
     s32 maxwc = (RL_NUMSC - GET_SECT(RLDA)) * RL_NUMWD;
     s16 wc = 0200000 - RLMP;
 
-    if (wc > maxwc)                                         /* Will there be a track overrun? */
+    if (wc > maxwc) {                                         /* Will there be a track overrun? */
         wc = maxwc;
+    }
     RLWC = 65536 - wc;
-    //Serial.printf("Disk: Loc:%08o WC:%06o BA:%08o\r\n", GET_DA(RLDA) * 256, wc,RLBA);
-	if (FR_OK != (f_lseek(&rl02, pos))) {
+	if (FR_OK != (f_lseek(&disks[drive], pos))) {
         gprintf("%% rlstep: failed to seek\r\n");
         while (1);
     }
     u16 i=0;
     u16 val;
-    while (RLWC)
-    {
-        if (w)
-        {
+    while (RLWC) {
+        if (w) {
             val = cpu.unibus.read16(RLBA);
-            //fwrite(&val, 2, 1, rldata);
-            f_write(&rl02,&val,2,&bcnt);
-        }
-        else
-        {
-            f_read(&rl02,&val,2,&bcnt);
-            //fread(&val, 2, 1, rldata);
+            f_write(&disks[drive], &val, 2, &bcnt);
+        } else {
+            f_read(&disks[drive], &val, 2, &bcnt);
             cpu.unibus.write16(RLBA, val);
         }
         RLBA += 2;
@@ -200,10 +172,10 @@ retry:
     val = 0;
     if (w && !RLMP) {                   // If write AND IO complete (RLMP==0) fill remaining words in sector with zeros.
         if (i)
-            for (i=i;i<256;i++)
-                f_write(&rl02,&val,2,&bcnt);
-    f_sync(&rl02);
-    //fflush(rldata);
+            for (i=i;i<256;i++) {
+                f_write(&disks[drive],&val,2,&bcnt);
+            }
+        f_sync(&disks[drive]) ;
     }
     if (RLMP) {                         // Has RLMP (WC) gone to zero. If not, move to next track and continue
         RLDA = (RLDA + 0100) & ~077;
@@ -215,46 +187,42 @@ retry:
     drun = 0;
 }
 
-void RL11::write16(u32 a, u16 v)
-{
-    //Serial.printf("%% rlwrite: %06o -> %06o RLCS:%d\r\n",a,v,RLCS & 1);
-    switch (a)
-    {
+void RL11::write16(u32 a, u16 v) {
+    switch (a) {
     case DEV_RL_CS:  // Control Status
         RLBA = (RLBA & 0xFFFF) | ((v & 060) << 12);
+        drive = (v >> 8) & 3 ;
         RLCS = ((RLCS & 0176001) ^ (v & ~0176001));
-        //printf("RLCS:%06o\r\n", (RLCS & 016)>>1);
-        if ((RLCS & 0200) == 0)                // CRDY cleared
-        {
-            switch ((RLCS & 016) >> 1)
-            {
-            case 0:                     // NOP
-            case 1:                     // Write check (ignored)
-                rlready();
-                break;
-            case 2:                     // Get status
-                RLCS &= 01777;          // Clear error flags
-                if (RLDA & 2) {         // Do get status
-                    RLMP = dtype;        // Heads out/On track/RL02
-                    rlready();          // Immediate ready
-                }
-                break;
-            case 3:                     // Seek ... just set ready
-                RLCS &= 01777;          // Clear error flags
-                rlready();
-                break;
-            case 4:                     // Read header
-                rlready();
-                break;
-            case 5:
-            case 6:                    // Read or Write
-                RLWC = RLMP;
-                drun = 100;             // Defer xfer by 100 cpu cycles
-                RLCS &= ~1;            // Clear Ready
-                break;
-            default:
-                gprintf("%% unimplemented RL02 operation");  // %#o", ((r.RLCS & 017) >> 1)))
-                while (1);
+
+        if ((RLCS & 0200) == 0) {                // CRDY cleared
+            switch ((RLCS & 016) >> 1) {
+                case 0:                     // NOP
+                case 1:                     // Write check (ignored)
+                    rlready();
+                    break;
+                case 2:                     // Get status
+                    RLCS &= 01777;          // Clear error flags
+                    if (RLDA & 2) {         // Do get status
+                        RLMP = dtype;        // Heads out/On track/RL02
+                        rlready();          // Immediate ready
+                    }
+                    break;
+                case 3:                     // Seek ... just set ready
+                    RLCS &= 01777;          // Clear error flags
+                    rlready();
+                    break;
+                case 4:                     // Read header
+                    rlready();
+                    break;
+                case 5:
+                case 6:                    // Read or Write
+                    RLWC = RLMP;
+                    drun = 2;             // Defer xfer by 2 cpu cycles
+                    RLCS &= ~1;            // Clear Ready
+                    break;
+                default:
+                    gprintf("%06o unimplemented RL01/2 operation", (RLCS & 017) >> 1) ;
+                    return ;
             }
         }
         break;
@@ -271,22 +239,18 @@ void RL11::write16(u32 a, u16 v)
         RLBA = (RLBA & 0xffff) | ((v & 077) << 16);
         break;
     default:
-        //printf("%% rlwrite16: invalid write");
         trap(INTBUS);
-        //panic();
     }
 }
 
-void RL11::reset()
-{
+void RL11::reset() {
     RLCS = 0x81;
     RLBA = 0;
     RLDA = 0;
     RLMP = 0;
     drun = 0;
-    dtype = 035;           // RL01
-    if (f_size(&rl02) > 6000000)
-        dtype = 0235;         // RL02
+    drive = 0 ;
+    dtype = 0235 ;         // RL02
 }
 
 
