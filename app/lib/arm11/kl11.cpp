@@ -62,22 +62,26 @@ void KL11::write16(u32 a, u16 v) {
 	}
 }
 
+// #define KL11_DEBUG
+
 void KL11::xpoll() {
 	if (xcsr & 0200) {
 		return ;
 	}
 
-	// static FIL ft ;
+#ifdef KL11_DEBUG
+	static FIL ft ;
 
-	// if (ft.obj.fs == nullptr) {
-	// 	FRESULT fr = f_open(&ft, "TTYOUT.TXT", FA_WRITE | FA_CREATE_ALWAYS) ;
-	// 	if (fr != FR_OK && fr != FR_EXIST) {
-	// 		gprintf("kl11 f_open %d", fr) ;
-	// 	} else {
-	// 		f_truncate(&ft) ;
-	// 		f_lseek(&ft, 0) ;
-	// 	}
-	// }
+	if (ft.obj.fs == nullptr) {
+		FRESULT fr = f_open(&ft, "TTYOUT.TXT", FA_WRITE | FA_CREATE_ALWAYS) ;
+		if (fr != FR_OK && fr != FR_EXIST) {
+			gprintf("kl11 f_open %d", fr) ;
+		} else {
+			f_truncate(&ft) ;
+			f_lseek(&ft, 0) ;
+		}
+	}
+#endif
 
 	if (xbuf) {
 		u8 c = xbuf & 0377 ;
@@ -85,9 +89,12 @@ void KL11::xpoll() {
 			CLogger::Get()->Write("KL11::xpoll", LogError, "console queue is full") ;
 			return ;
 		}
-		// UINT bw;
-		// f_write(&ft, &c, 1, &bw) ;
-		// f_sync(&ft) ;
+
+#ifdef KL11_DEBUG
+		UINT bw;
+		f_write(&ft, &c, 1, &bw) ;
+		f_sync(&ft) ;
+#endif
 
 		xbuf = 0 ;
 	}

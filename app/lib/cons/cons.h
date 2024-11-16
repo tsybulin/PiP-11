@@ -36,6 +36,7 @@ class Console {
 		void showStatus() ;
 		void showRusLat() ;
 		void beep() ;
+		void showThrottle(bool v) ;
 
 		void setHotkeyHandler(HotkeyHandler hk, void *context) ;
 		volatile TShutdownMode shutdownMode ;

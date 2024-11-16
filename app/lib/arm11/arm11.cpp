@@ -64,6 +64,8 @@ jmp_buf trapbuf;
 
 void trap(u8 vec) { longjmp(trapbuf, vec); }
 
+static volatile bool cpuThrottle = false ;
+
 void loop() {
     auto vec = setjmp(trapbuf);
 
@@ -88,10 +90,12 @@ void loop() {
             continue ;
         }
 
-        // u64 now = CTimer::GetClockTicks64() ;
-        // while (CTimer::GetClockTicks64() - now < 5) {
-        //     // ;
-        // }
+        if (cpuThrottle) {
+            u64 now = CTimer::GetClockTicks64() ;
+            while (CTimer::GetClockTicks64() - now < 6) {
+                // ;
+            }
+        }
         
         u8 ivec = cpu.interrupt_vector() ;
 
@@ -195,12 +199,19 @@ static bool hotkeyHandler(const unsigned char modifiers, const unsigned char hid
         return true ;
     }
 
+    if (!modifiers && hid_key == HID_KEY_F11) {
+        cpuThrottle = !cpuThrottle ;
+        console->showThrottle(cpuThrottle) ;
+        return true ;
+    }
+
     return false ;
 }
 
 TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon) {
     Console::get()->setHotkeyHandler(hotkeyHandler, Console::get()) ;
     setup(rkfile, rlfile, bootmon);
+    Console::get()->showThrottle(cpuThrottle) ;
 
     while (!interrupted) {
         loop();

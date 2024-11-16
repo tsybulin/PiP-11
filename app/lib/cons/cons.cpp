@@ -159,6 +159,16 @@ void Console::showRusLat() {
     }
 }
 
+void Console::showThrottle(bool v) {
+    unsigned xshift = STATUS_WIDTH * 2 + 10 ;
+    unsigned thshift = v ? THROTTLE_HEIGHT * THROTTLE_WIDTH : 0 ;
+    for (int y = 0; y < THROTTLE_HEIGHT; y++) {
+        for (int x = 0; x < THROTTLE_WIDTH; x++) {
+			screen->SetPixel(x + xshift, y + 456, throttle[thshift + y * THROTTLE_WIDTH + x]) ;
+        }
+    }
+}
+
 static volatile TKernelTimerHandle kth = 0 ;
 
 static void buzzHandler(TKernelTimerHandle hTimer, void *pParam, void *pContext) {
