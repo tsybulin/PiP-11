@@ -9,11 +9,14 @@ queue_t keyboard_queue ;
 queue_t console_queue ;
 
 Console::Console(CActLED *actLED, CDeviceNameService *deviceNameService, CInterruptSystem *interrupt, CTimer *timer) :
-    buzzPin(23, GPIOModeOutput),
     shutdownMode(ShutdownNone),
+    vt52_mode(false),
+    koi7n1(false),
+    buzzPin(23, GPIOModeOutput),
     usbhci(interrupt, timer, true),
     keyboard(0),
-    koi7n1(false)
+    hotkeyHandler(0),
+    hotkeyHandlerCtx(0)
 {
     buzzPin.Write(HIGH) ;
     pthis = this ;
@@ -170,4 +173,9 @@ void Console::beep() {
 
     buzzPin.Write(LOW) ;
     kth = timer->StartKernelTimer(10, buzzHandler, &buzzPin) ;
+}
+
+void Console::setHotkeyHandler(HotkeyHandler hk, void *context) {
+    this->hotkeyHandler = hk ;
+    this->hotkeyHandlerCtx = context ;
 }

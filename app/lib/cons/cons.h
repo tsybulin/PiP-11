@@ -18,6 +18,8 @@ void iprintf(const char *__restrict format, ...) ;
 
 #define CONS_TEXT_COLOR COLOR16 (170 >> 3, 170 >> 3, 170 >> 3)
 
+typedef bool (*HotkeyHandler)(const unsigned char modifiers, const unsigned char hid_key, void *context) ;
+
 class Console {
 	public:
 		Console(CActLED *actLED, CDeviceNameService *deviceNameService, CInterruptSystem *interrupt, CTimer *timer);
@@ -35,8 +37,12 @@ class Console {
 		void showRusLat() ;
 		void beep() ;
 
+		void setHotkeyHandler(HotkeyHandler hk, void *context) ;
+		volatile TShutdownMode shutdownMode ;
+
 		static Console* get() ;
 
+		bool vt52_mode, koi7n1 ;
 	private:
 		void keyboardLoop() ;
 		static void keyboardRemovedHandler(CDevice *device, void *context) ;
@@ -47,7 +53,6 @@ class Console {
 		void processKeyboardVT(u8 key) ;
 
 		CGPIOPin buzzPin ;
-		volatile TShutdownMode shutdownMode ;
 		CActLED *actLED ;
 		CDeviceNameService *deviceNameService ;
 		CInterruptSystem *interrupt ;
@@ -56,7 +61,6 @@ class Console {
 		CUSBKeyboardDevice * volatile keyboard ;
 		CScreenDevice *screen ;
 		unsigned led_ticks ;
-		bool koi7n1 ;
 
 		static Console *pthis ;
 
@@ -64,10 +68,13 @@ class Console {
 		u8 terminal_state = 0 ;
 		int cursor_col = 0, cursor_row = 0, saved_col = 0, saved_row = 0;
 		int scroll_region_start = 0, scroll_region_end = CONS_LAST_ROW ;
-		bool cursor_shown = true, cursor_eol = false, saved_eol = false, vt52_mode = false ;
+		bool cursor_shown = true, cursor_eol = false, saved_eol = false ;
 		TScreenColor color_fg = CONS_TEXT_COLOR, color_bg = BLACK_COLOR, saved_fg, saved_bg ;
 		u8 attr = 0, saved_attr, saved_charset_G0, saved_charset_G1, *charset, charset_G0, charset_G1 ;
 		bool screenInverted = false ;
+
+		HotkeyHandler hotkeyHandler ;
+		void *hotkeyHandlerCtx ;
 
 		void putCharVT100(char c) ;
 		void putCharVT52(char c) ;

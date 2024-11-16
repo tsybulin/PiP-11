@@ -157,7 +157,50 @@ boolean CKernel::Initialize (void) {
 	return bOK ;
 }
 
+static volatile bool firmwareMode = false ;
+
+bool CKernel::hotkeyHandler(const unsigned char modifiers, const unsigned char hid_key, void *context) {
+	CKernel *pthis = (CKernel *)context ;
+
+    if (
+        modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL) &&
+        modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT) &&
+        hid_key == HID_KEY_DELETE
+    ) {
+		pthis->console.shutdownMode = ShutdownReboot ;
+        CMultiCoreSupport::SendIPI(0, IPI_USER) ;
+
+		return true ;
+    }
+
+	if (!modifiers && hid_key == HID_KEY_F9) {
+		if (pthis->screenBrightness > 50) {
+			pthis->screenBrightness -= 10 ;
+			pthis->screen.GetFrameBuffer()->SetBacklightBrightness(pthis->screenBrightness) ;
+			iprintf("Brightness %d", pthis->screenBrightness) ;
+		}
+		return true ;
+	}
+
+	if (!modifiers && hid_key == HID_KEY_F10) {
+		if (pthis->screenBrightness < 180) {
+			pthis->screenBrightness += 10 ;
+			pthis->screen.GetFrameBuffer()->SetBacklightBrightness(pthis->screenBrightness) ;
+			iprintf("Brightness %d", pthis->screenBrightness) ;
+		}
+		return true ;
+	}
+
+	if (!modifiers && hid_key == HID_KEY_F12) {
+		firmwareMode = true ;
+		return true ;
+	}
+
+	return false ;
+}
+
 TShutdownMode CKernel::Run (void) {
+	console.setHotkeyHandler(hotkeyHandler, this) ;
 	console.vtCls() ;
 	console.beep() ;
 	CString txt ;
@@ -231,6 +274,40 @@ TShutdownMode CKernel::Run (void) {
 			return mode ;
 		}
 
+		if (firmwareMode) {
+			ci = 0 ;
+			selected = false ;
+			paused = true ;
+
+			console.vtCls() ;
+			console.write("FIRMWARE> ", 0, 0, CONS_TEXT_COLOR) ;
+
+			CScheduler scheduler ;
+
+			const u8 ipaddress[] = {172, 16, 103, 101} ;
+			const u8 netmask[]   = {255, 255, 255, 0} ;
+			const u8 gateway[]   = {172, 16, 103, 254} ;
+			const u8 dns[]       = {172, 16, 103, 254} ;
+			CNetSubSystem net(ipaddress, netmask, gateway, dns, "pip11") ;
+
+			if (!net.Initialize()) {
+				gprintf("Net initilize error") ;
+				while(!interrupted) {} ;
+				break;
+			}
+
+			console.write("> SHOW IP", 0, 2, CONS_TEXT_COLOR) ;
+
+			CString ips ;
+			net.GetConfig()->GetIPAddress()->Format(&ips);
+			console.write(ips, 0, 4, CONS_TEXT_COLOR) ;
+
+			new Firmware(&net, &fileSystem) ;
+			while (!interrupted) {
+				scheduler.Yield() ;
+			}
+		}
+
 		if (!queue_is_empty(&keyboard_queue)) {
 			unsigned char c ;
 			if (!queue_try_remove(&keyboard_queue, &c)) {
@@ -268,57 +345,6 @@ TShutdownMode CKernel::Run (void) {
 					ci = 4 ;
 					selected = true ;
 					break;
-
-				case KEY_F10:
-					if (screenBrightness < 180) {
-						screenBrightness += 10 ;
-						screen.GetFrameBuffer()->SetBacklightBrightness(screenBrightness) ;
-						iprintf("Brightness %d", screenBrightness) ;
-					}
-					break;
-
-				case KEY_F9:
-					if (screenBrightness > 50) {
-						screenBrightness -= 10 ;
-						screen.GetFrameBuffer()->SetBacklightBrightness(screenBrightness) ;
-						iprintf("Brightness %d", screenBrightness) ;
-					}
-					break;
-
-				case KEY_F11: {
-						ci = 0 ;
-						selected = false ;
-						paused = true ;
-
-						console.vtCls() ;
-						console.write("FIRMWARE> ", 0, 0, CONS_TEXT_COLOR) ;
-
-						CScheduler scheduler ;
-
-						const u8 ipaddress[] = {172, 16, 103, 101} ;
-						const u8 netmask[]   = {255, 255, 255, 0} ;
-						const u8 gateway[]   = {172, 16, 103, 254} ;
-						const u8 dns[]       = {172, 16, 103, 254} ;
-						CNetSubSystem net(ipaddress, netmask, gateway, dns, "pip11") ;
-
-						if (!net.Initialize()) {
-							gprintf("Net initilize error") ;
-							while(!interrupted) {} ;
-							break;
-						}
-
-						console.write("> SHOW IP", 0, 2, CONS_TEXT_COLOR) ;
-
-						CString ips ;
-						net.GetConfig()->GetIPAddress()->Format(&ips);
-						console.write(ips, 0, 4, CONS_TEXT_COLOR) ;
-
-						new Firmware(&net, &fileSystem) ;
-						while (!interrupted) {
-							scheduler.Yield() ;
-						}
-					}
-					break ;
 
 				default:
 					ci = 0 ;

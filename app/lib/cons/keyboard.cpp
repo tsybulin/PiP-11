@@ -1,11 +1,5 @@
 #include "cons.h"
 
-#ifndef ARM_ALLOW_MULTI_CORE
-#define ARM_ALLOW_MULTI_CORE
-#endif
-
-#include <circle/multicore.h>
-
 struct IntlMapStruct {
     u8 mapNormal[71] ;
     u8 mapShift[71] ;
@@ -188,33 +182,10 @@ void Console::keyStatusHandler(unsigned char modifiers, const unsigned char keys
         return ;
     }
 
-    if (
-        modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL) &&
-        modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT) &&
-        k == HID_KEY_DELETE
-    ) {
-        pthis->shutdownMode = ShutdownReboot ;
-        CMultiCoreSupport::SendIPI(0, IPI_USER) ;
-    }
-
-    if (
-        modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL) &&
-        modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT) &&
-        k == HID_KEY_BACKSPACE
-    ) {
-        CMultiCoreSupport::SendIPI(0, IPI_USER + 1) ;
-    }
-
-    if (!modifiers && k == HID_KEY_F12) {
-        pthis->vt52_mode = !pthis->vt52_mode ;
-        pthis->showStatus() ;
-        return ;
-    }
-
-    if (modifiers & KEYBOARD_MODIFIER_LEFTGUI && k == HID_KEY_SPACE) {
-        pthis->koi7n1 = !pthis->koi7n1 ;
-        pthis->showRusLat() ;
-        return ;
+    if (pthis->hotkeyHandler != nullptr) {
+        if (pthis->hotkeyHandler(modifiers, k, pthis->hotkeyHandlerCtx)) {
+            return ;
+        }
     }
 
     u64 now = pthis->timer->GetClockTicks64() ;

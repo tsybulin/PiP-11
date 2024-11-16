@@ -7,6 +7,12 @@
 #include <circle/setjmp.h>
 #include <circle/timer.h>
 
+#ifndef ARM_ALLOW_MULTI_CORE
+#define ARM_ALLOW_MULTI_CORE
+#endif
+
+#include <circle/multicore.h>
+
 #include "boot_defs.h"
 
 KB11 cpu;
@@ -18,38 +24,6 @@ ODT odt ;
 
 extern volatile bool interrupted ;
 extern volatile bool halted ;
-
-/* Binary loader.
-
-   Loader format consists of blocks, optionally preceded, separated, and
-   followed by zeroes.  Each block consists of:
-
-        001             ---
-        xxx              |
-        lo_count         |
-        hi_count         |
-        lo_origin        > count bytes
-        hi_origin        |
-        data byte        |
-        :                |
-        data byte       ---
-        checksum
-
-   If the byte count is exactly six, the block is the last on the tape, and
-   there is no checksum.  If the origin is not 000001, then the origin is
-   the PC at which to start the program.
-*/
-
-int f_xgetc(FIL *fl)
-{
-    unsigned char buf[2];
-    UINT bctr;
-
-    FRESULT fr=f_read(fl,buf,1,&bctr);
-    if (fr==FR_OK)
-        return buf[0];
-    return -1;
-}
 
 void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
 	if (cpu.unibus.rk11.crtds[0].obj.lockid) {
@@ -186,9 +160,48 @@ void loop() {
     }
 }
 
+static bool hotkeyHandler(const unsigned char modifiers, const unsigned char hid_key, void *context) {
+    Console *console = (Console *)context ;
+
+    if (
+        modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL) &&
+        modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT) &&
+        hid_key == HID_KEY_DELETE
+    ) {
+		console->shutdownMode = ShutdownReboot ;
+        CMultiCoreSupport::SendIPI(0, IPI_USER) ;
+
+		return true ;
+    }
+
+    if (
+        modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL) &&
+        modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT) &&
+        hid_key == HID_KEY_BACKSPACE
+    ) {
+        CMultiCoreSupport::SendIPI(0, IPI_USER + 1) ;
+        return true ;
+    }
+
+    if (!modifiers && hid_key == HID_KEY_F12) {
+        console->vt52_mode = !console->vt52_mode ;
+        console->showStatus() ;
+        return true ;
+    }
+
+    if (modifiers & KEYBOARD_MODIFIER_LEFTGUI && hid_key == HID_KEY_SPACE) {
+        console->koi7n1 = !console->koi7n1 ;
+        console->showRusLat() ;
+        return true ;
+    }
+
+    return false ;
+}
+
 TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon) {
+    Console::get()->setHotkeyHandler(hotkeyHandler, Console::get()) ;
     setup(rkfile, rlfile, bootmon);
-    
+
     while (!interrupted) {
         loop();
     }

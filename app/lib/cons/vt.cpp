@@ -244,8 +244,8 @@ void Console::vtDelete(int x, int y, int n, TScreenColor fg) {
 void Console::vtProcessText(unsigned char c) {
     switch (c) {
         case 5: // ENQ => send answer-back string
-        sendString("pip-11") ;
-        break;
+            sendString("\033/K") ;
+            break;
       
         case 7: // BEL => produce beep
         case 0207: // BEL => produce beep
@@ -272,17 +272,16 @@ void Console::vtProcessText(unsigned char c) {
             break;
         }
 
-    case '\t': // horizontal tab
-      {
-        int col = cursor_col + 4 ;
-        vtMoveCursorLimited(cursor_row, col) ;
+    case '\t': { // horizontal tab
+            int col = cursor_col + 4 ;
+            vtMoveCursorLimited(cursor_row, col) ;
+        }
         break;
-      }
       
     case '\n': // newline
-    case 0x0B:   // vertical tab (interpreted as newline)
         vtMoveCursorWrap(cursor_row + 1, cursor_col) ;
         break ;
+    case 0x0B:   // vertical tab (interpreted as newline)
     case 0x0C:   // form feed (interpreted as newline)
     case '\r': // carriage return
         vtMoveCursorWrap(cursor_row, 0) ;
@@ -360,6 +359,7 @@ void Console::vtProcessCommand(char start_char, char final_char, u8 num_params, 
                     if (!enabled) {
                         vtReset();
                         vt52_mode = true ;
+                        showStatus() ;
                     }
                     break ;
 
@@ -897,6 +897,7 @@ void Console::putCharVT52(char c) {
                 case '<':
                     vtReset();
                     vt52_mode = false;
+                    showStatus() ;
                     break;
                 }
 

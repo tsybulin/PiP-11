@@ -67,11 +67,28 @@ void KL11::xpoll() {
 		return ;
 	}
 
+	// static FIL ft ;
+
+	// if (ft.obj.fs == nullptr) {
+	// 	FRESULT fr = f_open(&ft, "TTYOUT.TXT", FA_WRITE | FA_CREATE_ALWAYS) ;
+	// 	if (fr != FR_OK && fr != FR_EXIST) {
+	// 		gprintf("kl11 f_open %d", fr) ;
+	// 	} else {
+	// 		f_truncate(&ft) ;
+	// 		f_lseek(&ft, 0) ;
+	// 	}
+	// }
+
 	if (xbuf) {
 		u8 c = xbuf & 0377 ;
 		if (!queue_try_add(&console_queue, &c)) {
+			CLogger::Get()->Write("KL11::xpoll", LogError, "console queue is full") ;
 			return ;
 		}
+		// UINT bw;
+		// f_write(&ft, &c, 1, &bw) ;
+		// f_sync(&ft) ;
+
 		xbuf = 0 ;
 	}
 

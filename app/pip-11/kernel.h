@@ -31,6 +31,8 @@ class CKernel {
 
 		TShutdownMode Run(void);
 
+
+		static bool hotkeyHandler(const unsigned char modifiers, const unsigned char hid_key, void *context) ;
 	private:
 		// do not change this order
 		CActLED				actLED;
@@ -50,6 +52,7 @@ class CKernel {
 		Console				console ;
 		MultiCore			multiCore ;
 		unsigned            screenBrightness ;
+
 } ;
 
 #endif
