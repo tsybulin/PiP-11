@@ -327,7 +327,7 @@ void Console::vtReset() {
 void Console::vtCls() {
     for (int r = CONS_TOP; r < TEXTMODE_ROWS; r++) {
         for (int c = 0; c < TEXTMODE_COLS; c++) {
-            screen->displayChar(' ', c, r) ;
+            screen->displayChar(' ', c, r, CONS_TEXT_COLOR, CONS_BACKGROUND_COLOR) ;
         }
     }
 }

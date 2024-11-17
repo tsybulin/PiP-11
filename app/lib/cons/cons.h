@@ -16,7 +16,9 @@
 void gprintf(const char *__restrict format, ...) ;
 void iprintf(const char *__restrict format, ...) ;
 
+// #define CONS_TEXT_COLOR COLOR16 (30 >> 3, 150 >> 3, 30 >> 3)
 #define CONS_TEXT_COLOR COLOR16 (170 >> 3, 170 >> 3, 170 >> 3)
+#define CONS_BACKGROUND_COLOR BLACK_COLOR
 
 typedef bool (*HotkeyHandler)(const unsigned char modifiers, const unsigned char hid_key, void *context) ;
 
@@ -26,7 +28,7 @@ class Console {
 		~Console(void);
 
 		void init(CScreenDevice *screen) ;
-		void write(const char *buffer, unsigned col, unsigned row, TScreenColor fg = WHITE_COLOR, TScreenColor bg = BLACK_COLOR) ;
+		void write(const char *buffer, unsigned col, unsigned row, TScreenColor fg = CONS_TEXT_COLOR, TScreenColor bg = CONS_BACKGROUND_COLOR) ;
 		void drawLine(const char* title, unsigned row) ;
 		TShutdownMode loop() ;
 		void printf(const char *__restrict format, ...) ;
@@ -70,7 +72,7 @@ class Console {
 		int cursor_col = 0, cursor_row = 0, saved_col = 0, saved_row = 0;
 		int scroll_region_start = 0, scroll_region_end = CONS_LAST_ROW ;
 		bool cursor_shown = true, cursor_eol = false, saved_eol = false ;
-		TScreenColor color_fg = CONS_TEXT_COLOR, color_bg = BLACK_COLOR, saved_fg, saved_bg ;
+		TScreenColor color_fg = CONS_TEXT_COLOR, color_bg = CONS_BACKGROUND_COLOR, saved_fg, saved_bg ;
 		u8 attr = 0, saved_attr, saved_charset_G0, saved_charset_G1, *charset, charset_G0, charset_G1 ;
 		bool screenInverted = false ;
 

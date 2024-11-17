@@ -259,7 +259,7 @@ TShutdownMode CKernel::Run (void) {
         CString tmp ;
 		tmp.Format("%d. ", i) ;
 		tmp.Append(configurations[i].name) ;
-		console.write(tmp, 0, row++, i == 0 ? GREEN_COLOR : CONS_TEXT_COLOR) ;
+		console.write(tmp, 0, row++, i == 0 ? YELLOW_COLOR : CONS_TEXT_COLOR) ;
     }
 
     
