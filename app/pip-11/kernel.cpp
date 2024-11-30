@@ -22,8 +22,8 @@ typedef struct configuration {
 static configuration_t configurations[5] = {
     {
         "RK0: DEFAULT",
-        "PIP-11/BOOT.RK05",
-        "PIP-11/WORK.RL02"
+        "PIP-11/RK11_00.RK05",
+        "PIP-11/RL11_00.RL02"
    }
 } ;
 

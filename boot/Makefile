@@ -31,12 +31,12 @@ firmware: clean
 	@for file in $(FILES) ; \
 	do \
 		echo Downloading $$file ... ; \
-		wget -q -O $$file $(BASEURL)/$$file?raw=true ; \
+		curl -q -L -o $$file $(BASEURL)/$$file?raw=true ; \
 	done
 	@for file in $(OVERLAYS) ; \
 	do \
 		echo Downloading $$file ... ; \
-		wget -q -O $$file $(BASEURL)/overlays/$$file?raw=true ; \
+		curl -q -L -o $$file $(BASEURL)/overlays/$$file?raw=true ; \
 	done
 
 all: firmware armstub bootloader
