@@ -211,16 +211,6 @@ void Console::keyStatusHandler(unsigned char modifiers, const unsigned char keys
 }
 
 void Console::keyboardLoop() {
-    if (this->keyboard == 0) {
-        if (this->usbhci.UpdatePlugAndPlay()) {
-            keyboard = (CUSBKeyboardDevice *) this->deviceNameService->GetDevice("ukbd1", FALSE) ;
-            if (keyboard != 0) {
-                keyboard->RegisterRemovedHandler(keyboardRemovedHandler) ;
-                keyboard->RegisterKeyStatusHandlerRaw(keyStatusHandler) ;
-            }
-        }
-    }
-
     if (this->keyboard != 0) {
         if (this->keyboard->GetLEDs() != keyboard_led_status) {
             this->keyboard->SetLEDs(keyboard_led_status) ;

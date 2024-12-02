@@ -15,6 +15,8 @@
 
 #include "boot_defs.h"
 
+#define DRIVE "USB:"
+
 KB11 cpu;
 int kbdelay = 0;
 int clkdelay = 0;
@@ -31,8 +33,8 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
     }
 
     for (u8 drv = 0; drv < 2; drv++) {
-        char name[20] = "PIP-11/RL11_00.RL02" ;
-        name[13] = '0' + drv ;
+        char name[26] = DRIVE "/PIP-11/RL11_00.RL02" ;
+        name[18] = '0' + drv ;
 
 	    FRESULT fr = f_open(&cpu.unibus.rl11.disks[drv], !drv ? rlfile : name, FA_READ | FA_WRITE);
         if (FR_OK != fr && FR_EXIST != fr) {
@@ -42,8 +44,8 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
     }
 
     for (u8 crtd = 0; crtd < 8; crtd++) {
-        char name[20] = "PIP-11/RK11_00.RK05" ;
-        name[13] = '0' + crtd ;
+        char name[26] = DRIVE "/PIP-11/RK11_00.RK05" ;
+        name[18] = '0' + crtd ;
 
         FRESULT fr = f_open(&cpu.unibus.rk11.crtds[crtd], !crtd ? rkfile : name, FA_READ | FA_WRITE);
         if (FR_OK != fr && FR_EXIST != fr) {

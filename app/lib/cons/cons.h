@@ -5,7 +5,6 @@
 #include <circle/screen.h>
 #include <circle/actled.h>
 #include <circle/devicenameservice.h>
-#include <circle/usb/usbhcidevice.h>
 #include <circle/usb/usbkeyboard.h>
 #include <circle/gpiopin.h>
 #include "shutdown.h"
@@ -39,6 +38,12 @@ class Console {
 		void showRusLat() ;
 		void beep() ;
 		void showThrottle(bool v) ;
+		
+		inline bool hasKeyboard() {
+			return keyboard != 0 ;
+		}
+
+		void attachKeyboard(CUSBKeyboardDevice *kbd) ;
 
 		void setHotkeyHandler(HotkeyHandler hk, void *context) ;
 		volatile TShutdownMode shutdownMode ;
@@ -60,7 +65,6 @@ class Console {
 		CDeviceNameService *deviceNameService ;
 		CInterruptSystem *interrupt ;
 		CTimer *timer ;
-		CUSBHCIDevice usbhci ;
 		CUSBKeyboardDevice * volatile keyboard ;
 		CScreenDevice *screen ;
 		unsigned led_ticks ;

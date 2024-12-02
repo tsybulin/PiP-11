@@ -8,11 +8,13 @@
 
 extern queue_t console_queue ;
 volatile bool interrupted = false ;
-volatile bool core3active = false ;
 volatile bool halted = false ;
 
 MultiCore::MultiCore(CMemorySystem *pMemorySystem, Console *pConsole, CCPUThrottle *pCpuThrottle)
 :   CMultiCoreSupport (pMemorySystem),
+    rkfile(0),
+    rlfile(0),
+    bootmon(true),
     console(pConsole),
     cpuThrottle(pCpuThrottle),
     core3inited(false),
@@ -23,13 +25,24 @@ MultiCore::MultiCore(CMemorySystem *pMemorySystem, Console *pConsole, CCPUThrott
 MultiCore::~MultiCore() {
 }
 
-boolean MultiCore::Initialize(void) {
+boolean MultiCore::Initialize(char *kf, char *lf, bool bm) {
     interrupted = false ;
-    core3active = false ;
+    rkfile = kf ;
+    rlfile = lf ;
+    bootmon = bm ;
     return CMultiCoreSupport::Initialize() ;
 }
 
+TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon) ;
+
 void MultiCore::Run(unsigned ncore) {
+    CLogger::Get()->Write("mcore", LogNotice, "Run %d", ncore) ;
+
+    if (ncore == 0) {
+        TShutdownMode mode = startup(rkfile, rlfile, bootmon) ;
+        console->shutdownMode = mode ;
+    }
+
     if (ncore == 1) {
         char c ;
         while (!interrupted) {
@@ -59,10 +72,6 @@ void MultiCore::Run(unsigned ncore) {
         CNetSubSystem *net = 0 ;
 
         while (!interrupted) {
-            if (!core3active) {
-                continue ;
-            }
-
             if (!core3inited) {
                 core3inited = true ;
 

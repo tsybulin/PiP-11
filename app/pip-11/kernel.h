@@ -15,8 +15,8 @@
 #include <circle/logger.h>
 #include <circle/types.h>
 #include <circle/cputhrottle.h>
+#include <circle/usb/usbhcidevice.h>
 #include <cons/cons.h>
-#include <sdcard/emmc.h>
 #include <fatfs/ff.h>
 #include <circle/i2cmaster.h>
 
@@ -28,10 +28,7 @@ class CKernel {
 		~CKernel(void) ;
 
 		boolean Initialize(void) ;
-
 		TShutdownMode Run(void);
-
-
 		static bool hotkeyHandler(const unsigned char modifiers, const unsigned char hid_key, void *context) ;
 	private:
 		// do not change this order
@@ -45,7 +42,7 @@ class CKernel {
 		CSerialDevice		serial;
 		CLogger				logger;
 		CCPUThrottle		cpuThrottle;
-		CEMMCDevice		    emmc;
+		CUSBHCIDevice		usbhci ;
 		FATFS				fileSystem ;
 		CI2CMaster    		i2cMaster ;
 

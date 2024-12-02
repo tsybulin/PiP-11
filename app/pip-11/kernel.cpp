@@ -9,9 +9,8 @@
 #include "logo.h"
 #include "firmware.h"
 
-#define DRIVE "SD:"
+#define DRIVE "USB:"
 extern volatile bool interrupted ;
-extern volatile bool core3active ;
 
 typedef struct configuration {
     CString name;
@@ -22,13 +21,12 @@ typedef struct configuration {
 static configuration_t configurations[5] = {
     {
         "RK0: DEFAULT",
-        "PIP-11/RK11_00.RK05",
-        "PIP-11/RL11_00.RL02"
+        DRIVE "/PIP-11/RK11_00.RK05",
+        DRIVE "/PIP-11/RL11_00.RL02"
    }
 } ;
 
 extern queue_t keyboard_queue ;
-TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon) ;
 CSerialDevice *pSerial ;
 CI2CMaster *pI2cMaster ;
 
@@ -82,7 +80,7 @@ CKernel::CKernel (void)
 	serial(&interrupt),
 	logger(options.GetLogLevel()),
 	cpuThrottle(CPUSpeedMaximum),
-	emmc(&interrupt, &timer, &actLED),
+    usbhci(&interrupt, &timer, true),
 	i2cMaster(1),
 
 	console(&actLED, &deviceNameService, &interrupt, &timer),
@@ -139,7 +137,21 @@ boolean CKernel::Initialize (void) {
 	}
 
 	if (bOK) {
-		bOK = emmc.Initialize ();
+		bOK = usbhci.Initialize ();
+
+		if (bOK) {
+			logger.Write("kernel", LogNotice, "waiting for keyboard") ;
+
+			while (!console.hasKeyboard()) {
+			    bool updated = usbhci.UpdatePlugAndPlay() ;
+				if (updated) {
+					CUSBKeyboardDevice *keyboard = (CUSBKeyboardDevice *) deviceNameService.GetDevice("ukbd1", FALSE) ;
+					console.attachKeyboard(keyboard) ;
+				}
+			}
+
+			logger.Write("kernel", LogNotice, "keyboard attached") ;
+		}
 	}
 
 	if (bOK) {
@@ -148,10 +160,6 @@ boolean CKernel::Initialize (void) {
 
 	if (bOK) {
 		this->console.init(&this->screen) ;
-	}
-
-	if (bOK) {
-		multiCore.Initialize() ;
 	}
 
 	return bOK ;
@@ -208,7 +216,7 @@ TShutdownMode CKernel::Run (void) {
 	this->console.write(txt, 0, 6, CONS_TEXT_COLOR) ;
 
 	if (FR_OK != f_mount(&fileSystem, DRIVE, 1)) {
-		gprintf("SD Card not inserted or SD Card error!") ;
+		gprintf("USB error!") ;
 		while (1) {
 			TShutdownMode mode = this->console.loop() ;
 
@@ -218,7 +226,9 @@ TShutdownMode CKernel::Run (void) {
 		}
 	}
 
-    if (FRESULT res = ini_parse("PIP-11/CONFIG.INI", config_handler, nullptr); res != FR_OK) {
+	logger.Write("kernel", LogNotice, DRIVE " mounted") ;
+
+    if (FRESULT res = ini_parse(DRIVE "/PIP-11/CONFIG.INI", config_handler, nullptr); res != FR_OK) {
         gprintf("Can't load 'PIP-11/CONFIG.INI' err %d", res);
 		f_unmount(DRIVE) ;
 
@@ -230,6 +240,8 @@ TShutdownMode CKernel::Run (void) {
 			}
 		};
     }
+
+	logger.Write("kernel", LogNotice, "CONFIG.INI parsed") ;
 
 	int ci = 0 ;
 	bool selected = false ;
@@ -262,7 +274,6 @@ TShutdownMode CKernel::Run (void) {
 		console.write(tmp, 0, row++, i == 0 ? YELLOW_COLOR : CONS_TEXT_COLOR) ;
     }
 
-    
 	console.write("BOOT>", 0, ++row, CONS_TEXT_COLOR) ;
 
 	unsigned int timeout = timer.GetTicks() + 600 ;
@@ -302,7 +313,7 @@ TShutdownMode CKernel::Run (void) {
 			net.GetConfig()->GetIPAddress()->Format(&ips);
 			console.write(ips, 0, 4, CONS_TEXT_COLOR) ;
 
-			new Firmware(&net, &fileSystem) ;
+			new Firmware(&net, &fileSystem, DRIVE "/") ;
 			while (!interrupted) {
 				scheduler.Yield() ;
 			}
@@ -369,11 +380,10 @@ TShutdownMode CKernel::Run (void) {
 	console.showStatus() ;
 	console.showRusLat() ;
 
-	core3active = true ;
-
-	TShutdownMode mode = startup(rk, rl, ci > 0) ;
+	multiCore.Initialize((char *)rk, (char *)rl, ci > 0) ;
+	multiCore.Run(0) ;
 
 	f_unmount(DRIVE) ;
 	
-	return mode ;
+	return console.shutdownMode ;
 }
