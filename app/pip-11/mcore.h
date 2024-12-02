@@ -17,15 +17,16 @@ class MultiCore : public CMultiCoreSupport {
     public:
         MultiCore(CMemorySystem *pMemorySystem, Console *pConsole, CCPUThrottle *pCpuThrottle) ;
         ~MultiCore() ;
-        boolean Initialize(void) ;
+        boolean Initialize(char *kf, char *lf, bool bm) ;
         void Run(unsigned ncore) ;
         virtual void IPIHandler (unsigned ncore, unsigned nipi) ;
-
     private:
+        char *rkfile ;
+        char *rlfile ;
+        bool bootmon ;
         Console *console ;
         CCPUThrottle *cpuThrottle ;
         bool core3inited ;
         API *api ;
 } ;
-
 

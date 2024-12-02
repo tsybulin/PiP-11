@@ -13,7 +13,6 @@ Console::Console(CActLED *actLED, CDeviceNameService *deviceNameService, CInterr
     vt52_mode(false),
     koi7n1(false),
     buzzPin(23, GPIOModeOutput),
-    usbhci(interrupt, timer, true),
     keyboard(0),
     hotkeyHandler(0),
     hotkeyHandlerCtx(0)
@@ -34,7 +33,6 @@ Console::~Console(void) {
 
 void Console::init(CScreenDevice *screen) {
     this->screen = screen ;
-    usbhci.Initialize() ;
     queue_init(&keyboard_queue, 1, 16) ;
     queue_init(&console_queue, 1, 256) ;
 
@@ -45,14 +43,13 @@ void Console::init(CScreenDevice *screen) {
     charset = &charset_G0;
     koi7n1 = false ;
     screenInverted = false ;
+}
 
-    bool updated = this->usbhci.UpdatePlugAndPlay() ;
-    if (updated && this->keyboard == 0) {
-        keyboard = (CUSBKeyboardDevice *) this->deviceNameService->GetDevice("ukbd1", FALSE) ;
-        if (keyboard != 0) {
-            keyboard->RegisterRemovedHandler(keyboardRemovedHandler) ;
-            keyboard->RegisterKeyStatusHandlerRaw(keyStatusHandler) ;
-        }
+void Console::attachKeyboard(CUSBKeyboardDevice *kbd) {
+    keyboard = kbd ;
+    if (keyboard != 0) {
+        keyboard->RegisterRemovedHandler(keyboardRemovedHandler) ;
+        keyboard->RegisterKeyStatusHandlerRaw(keyStatusHandler) ;
     }
 }
 
