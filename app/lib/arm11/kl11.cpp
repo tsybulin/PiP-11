@@ -1,12 +1,13 @@
 #include "kl11.h"
 
 #include "kb11.h"
+#include <circle/logger.h>
 
 extern KB11 cpu;
 
 extern volatile bool interrupted ;
-extern queue_t keyboard_queue ;
-extern queue_t console_queue ;
+extern queue_t netsend_queue ;
+extern queue_t netrecv_queue ;
 
 KL11::KL11() {
 }
@@ -85,7 +86,7 @@ void KL11::xpoll() {
 
 	if (xbuf) {
 		u8 c = xbuf & 0377 ;
-		if (!queue_try_add(&console_queue, &c)) {
+		if (!queue_try_add(&netsend_queue, &c)) {
 			CLogger::Get()->Write("KL11::xpoll", LogError, "console queue is full") ;
 			return ;
 		}
@@ -112,7 +113,7 @@ void KL11::rpoll() {
 	}
 
 	u8 c;
-	if (queue_try_remove(&keyboard_queue, &c)) {
+	if (queue_try_remove(&netrecv_queue, &c)) {
 		rbuf = c & 0377 ;
 		rcsr |= 0200 ;
 		if (rcsr & 0100) {

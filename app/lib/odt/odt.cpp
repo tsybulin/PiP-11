@@ -5,7 +5,7 @@
 #include <circle/logger.h>
 
 extern KB11 cpu ;
-extern queue_t keyboard_queue ;
+extern queue_t netrecv_queue ;
 void disasm(u16 ia);
 
 ODT::ODT() :
@@ -34,7 +34,7 @@ void ODT::loop() {
     }
 
     unsigned char c ;
-    if (!queue_try_remove(&keyboard_queue, &c)) {
+    if (!queue_try_remove(&netrecv_queue, &c)) {
         return ;
     }
 
@@ -86,7 +86,7 @@ void ODT::parseChar(const char c) {
     if ((c == 010 || c == 0177)) {
         if (bufptr > 0) {
             bufptr-- ;
-            cons->putCharVT(0177) ;
+            cons->sendChar(0177) ;
         }
         return ;
     }
@@ -143,7 +143,7 @@ void ODT::parseChar(const char c) {
         buf[++bufptr] = 0 ;
     }
 
-    cons->putCharVT(c) ;
+    cons->sendChar(c) ;
 }
 
 void ODT::parseCommand() {

@@ -6,6 +6,7 @@
 #include <circle/util.h>
 #include <circle/setjmp.h>
 #include <circle/timer.h>
+#include <circle/sched/scheduler.h>
 
 #ifndef ARM_ALLOW_MULTI_CORE
 #define ARM_ALLOW_MULTI_CORE
@@ -126,8 +127,6 @@ void loop() {
         cpu.unibus.lp11.step() ;
         cpu.pirq() ;
         
-        // if (clkdelay++ > 5000) {
-        //     clkdelay = 0 ;
         cpu.unibus.cons.xpoll() ;
         cpu.unibus.dl11.xpoll() ;
         // }
@@ -166,57 +165,13 @@ void loop() {
     }
 }
 
-static bool hotkeyHandler(const unsigned char modifiers, const unsigned char hid_key, void *context) {
-    Console *console = (Console *)context ;
-
-    if (
-        modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL) &&
-        modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT) &&
-        hid_key == HID_KEY_DELETE
-    ) {
-		console->shutdownMode = ShutdownReboot ;
-        CMultiCoreSupport::SendIPI(0, IPI_USER) ;
-
-		return true ;
-    }
-
-    if (
-        modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL) &&
-        modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT) &&
-        hid_key == HID_KEY_BACKSPACE
-    ) {
-        CMultiCoreSupport::SendIPI(0, IPI_USER + 1) ;
-        return true ;
-    }
-
-    if (!modifiers && hid_key == HID_KEY_F12) {
-        console->vt52_mode = !console->vt52_mode ;
-        console->showStatus() ;
-        return true ;
-    }
-
-    if (modifiers & KEYBOARD_MODIFIER_LEFTGUI && hid_key == HID_KEY_SPACE) {
-        console->koi7n1 = !console->koi7n1 ;
-        console->showRusLat() ;
-        return true ;
-    }
-
-    if (!modifiers && hid_key == HID_KEY_F11) {
-        cpuThrottle = !cpuThrottle ;
-        console->showThrottle(cpuThrottle) ;
-        return true ;
-    }
-
-    return false ;
-}
 
 TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon) {
-    Console::get()->setHotkeyHandler(hotkeyHandler, Console::get()) ;
     setup(rkfile, rlfile, bootmon);
-    Console::get()->showThrottle(cpuThrottle) ;
 
     while (!interrupted) {
         loop();
+        CScheduler::Get()->Yield() ;
     }
 
     return ShutdownReboot ;

@@ -4,13 +4,16 @@
 #include "kernel.h"
 
 #include <circle/util.h>
-#include <circle/sched/scheduler.h>
 #include "ini.h"
 #include "logo.h"
 #include "firmware.h"
+#include "netsend.h"
+#include "netrecv.h"
+#include "api.h"
 
 #define DRIVE "USB:"
 extern volatile bool interrupted ;
+extern queue_t netrecv_queue ;
 
 typedef struct configuration {
     CString name;
@@ -26,9 +29,13 @@ static configuration_t configurations[5] = {
    }
 } ;
 
-extern queue_t keyboard_queue ;
 CSerialDevice *pSerial ;
 CI2CMaster *pI2cMaster ;
+
+static const u8 ipaddress[] = {172, 16, 103, 101} ;
+static const u8 netmask[]   = {255, 255, 255, 0} ;
+static const u8 gateway[]   = {172, 16, 103, 254} ;
+static const u8 dns[]       = {172, 16, 103, 254} ;
 
 static int config_handler(void* user, const char* section, const char* name, const char* value) {
     int c = -1 ;
@@ -80,10 +87,11 @@ CKernel::CKernel (void)
 	serial(&interrupt),
 	logger(options.GetLogLevel()),
 	cpuThrottle(CPUSpeedMaximum),
+	net(ipaddress, netmask, gateway, dns, "pip11"),
     usbhci(&interrupt, &timer, true),
 	i2cMaster(1),
 
-	console(&actLED, &deviceNameService, &interrupt, &timer),
+	console(),
 	multiCore(CMemorySystem::Get(), &console, &cpuThrottle),
 	screenBrightness(100)
 {
@@ -138,19 +146,17 @@ boolean CKernel::Initialize (void) {
 
 	if (bOK) {
 		bOK = usbhci.Initialize ();
+	}
+
+	if (bOK) {
+		bOK = net.Initialize() ;
 
 		if (bOK) {
-			logger.Write("kernel", LogNotice, "waiting for keyboard") ;
-
-			while (!console.hasKeyboard()) {
-			    bool updated = usbhci.UpdatePlugAndPlay() ;
-				if (updated) {
-					CUSBKeyboardDevice *keyboard = (CUSBKeyboardDevice *) deviceNameService.GetDevice("ukbd1", FALSE) ;
-					console.attachKeyboard(keyboard) ;
-				}
-			}
-
-			logger.Write("kernel", LogNotice, "keyboard attached") ;
+			CString ips ;
+			net.GetConfig()->GetIPAddress()->Format(&ips);
+			logger.Write("CKernel::Initialize", LogError, ips) ;
+		} else {
+			logger.Write("CKernel::Initialize", LogError, "net init") ;
 		}
 	}
 
@@ -159,7 +165,7 @@ boolean CKernel::Initialize (void) {
 	}
 
 	if (bOK) {
-		this->console.init(&this->screen) ;
+		this->console.init() ;
 	}
 
 	return bOK ;
@@ -167,53 +173,15 @@ boolean CKernel::Initialize (void) {
 
 static volatile bool firmwareMode = false ;
 
-bool CKernel::hotkeyHandler(const unsigned char modifiers, const unsigned char hid_key, void *context) {
-	CKernel *pthis = (CKernel *)context ;
-
-    if (
-        modifiers & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL) &&
-        modifiers & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT) &&
-        hid_key == HID_KEY_DELETE
-    ) {
-		pthis->console.shutdownMode = ShutdownReboot ;
-        CMultiCoreSupport::SendIPI(0, IPI_USER) ;
-
-		return true ;
-    }
-
-	if (!modifiers && hid_key == HID_KEY_F9) {
-		if (pthis->screenBrightness > 50) {
-			pthis->screenBrightness -= 10 ;
-			pthis->screen.GetFrameBuffer()->SetBacklightBrightness(pthis->screenBrightness) ;
-			iprintf("Brightness %d", pthis->screenBrightness) ;
-		}
-		return true ;
-	}
-
-	if (!modifiers && hid_key == HID_KEY_F10) {
-		if (pthis->screenBrightness < 180) {
-			pthis->screenBrightness += 10 ;
-			pthis->screen.GetFrameBuffer()->SetBacklightBrightness(pthis->screenBrightness) ;
-			iprintf("Brightness %d", pthis->screenBrightness) ;
-		}
-		return true ;
-	}
-
-	if (!modifiers && hid_key == HID_KEY_F12) {
-		firmwareMode = true ;
-		return true ;
-	}
-
-	return false ;
-}
-
 TShutdownMode CKernel::Run (void) {
-	console.setHotkeyHandler(hotkeyHandler, this) ;
-	console.vtCls() ;
-	console.beep() ;
+	CTask *nst = new NetSend(&net) ;
+	nst->SetName("NetSend") ;
+	CTask *nrt = new NetRecv(&net) ;
+	nrt->SetName("NetRecv") ;
+
 	CString txt ;
-	txt.Format("PiP-11/45: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
-	this->console.write(txt, 0, 6, CONS_TEXT_COLOR) ;
+	txt.Format("PiP-11/45: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)\r\n", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
+	this->console.sendString(txt) ;
 
 	if (FR_OK != f_mount(&fileSystem, DRIVE, 1)) {
 		gprintf("USB error!") ;
@@ -247,7 +215,7 @@ TShutdownMode CKernel::Run (void) {
 	bool selected = false ;
 	bool paused = false ;
 
-	console.write("> SHOW CONFIGURATION", 0, 8, CONS_TEXT_COLOR) ;
+	console.sendString("> SHOW CONFIGURATION\r\n") ;
 
 	for (int y = 0; y < MODEL_HEIGHT; y++) {
 		for (int x = 0; x < MODEL_WIDTH; x ++) {
@@ -261,8 +229,6 @@ TShutdownMode CKernel::Run (void) {
 		}
 	}
 	
-	unsigned int row = 10 ;
-
     for (int i = 0; i < 5; i++) {
 		if (configurations[i].name.GetLength() == 0) {
 			continue ;
@@ -271,10 +237,11 @@ TShutdownMode CKernel::Run (void) {
         CString tmp ;
 		tmp.Format("%d. ", i) ;
 		tmp.Append(configurations[i].name) ;
-		console.write(tmp, 0, row++, i == 0 ? YELLOW_COLOR : CONS_TEXT_COLOR) ;
+		tmp.Append("\r\n") ;
+		// console.sendString(tmp) ;
     }
 
-	console.write("BOOT>", 0, ++row, CONS_TEXT_COLOR) ;
+	console.sendString("BOOT>") ;
 
 	unsigned int timeout = timer.GetTicks() + 600 ;
 
@@ -290,28 +257,7 @@ TShutdownMode CKernel::Run (void) {
 			selected = false ;
 			paused = true ;
 
-			console.vtCls() ;
-			console.write("FIRMWARE> ", 0, 0, CONS_TEXT_COLOR) ;
-
-			CScheduler scheduler ;
-
-			const u8 ipaddress[] = {172, 16, 103, 101} ;
-			const u8 netmask[]   = {255, 255, 255, 0} ;
-			const u8 gateway[]   = {172, 16, 103, 254} ;
-			const u8 dns[]       = {172, 16, 103, 254} ;
-			CNetSubSystem net(ipaddress, netmask, gateway, dns, "pip11") ;
-
-			if (!net.Initialize()) {
-				gprintf("Net initilize error") ;
-				while(!interrupted) {} ;
-				break;
-			}
-
-			console.write("> SHOW IP", 0, 2, CONS_TEXT_COLOR) ;
-
-			CString ips ;
-			net.GetConfig()->GetIPAddress()->Format(&ips);
-			console.write(ips, 0, 4, CONS_TEXT_COLOR) ;
+			console.sendString("FIRMWARE>\r\n") ;
 
 			new Firmware(&net, &fileSystem, DRIVE "/") ;
 			while (!interrupted) {
@@ -319,9 +265,9 @@ TShutdownMode CKernel::Run (void) {
 			}
 		}
 
-		if (!queue_is_empty(&keyboard_queue)) {
+		if (!queue_is_empty(&netrecv_queue)) {
 			unsigned char c ;
-			if (!queue_try_remove(&keyboard_queue, &c)) {
+			if (!queue_try_remove(&netrecv_queue, &c)) {
 				continue ;
 			}
 
@@ -366,21 +312,23 @@ TShutdownMode CKernel::Run (void) {
 		}
 
 		if (!paused) {
-			txt.Format("BOOT %d s.>", (timeout - timer.GetTicks()) / 100) ;
-			this->console.write(txt, 0, row, CONS_TEXT_COLOR) ;
+			txt.Format("BOOT %d s.>\r\n", (timeout - timer.GetTicks()) / 100) ;
+			this->console.sendString(txt) ;
 		} else {
-			this->console.write("BOOT>        ", 0, row, CONS_TEXT_COLOR) ;
+			this->console.sendString("BOOT>\r\n") ;
 		}
+
+		scheduler.Yield() ;
 	}
 	
 	const char *rk   = configurations[ci].rk ;
 	const char *rl   = configurations[ci].rl ;
 
 	screen.ClearScreen() ;
-	console.showStatus() ;
-	console.showRusLat() ;
 
 	multiCore.Initialize((char *)rk, (char *)rl, ci > 0) ;
+	// API * api = new API(&net) ;
+    // api->init() ;
 	multiCore.Run(0) ;
 
 	f_unmount(DRIVE) ;

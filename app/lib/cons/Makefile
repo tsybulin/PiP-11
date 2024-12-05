@@ -4,7 +4,7 @@
 
 CIRCLEHOME = ../../..
 
-OBJS = keyboard.o vt.o cons.o
+OBJS = cons.o
 
 libcons.a: $(OBJS)
 	@echo "  AR    $@"

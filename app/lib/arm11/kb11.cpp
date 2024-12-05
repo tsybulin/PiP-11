@@ -6,6 +6,7 @@
 #include "bootstrap.h"
 #include "boot_defs.h"
 #include <cons/cons.h>
+#include <circle/logger.h>
 
 /*
             ***** Update 1/3/2023 ISS *****
