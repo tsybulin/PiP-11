@@ -28,7 +28,7 @@ API::~API(void) {
 
 bool API::init() {
     inpSocket = new CSocket(pnet, IPPROTO_UDP) ;
-    if (inpSocket->Bind(5366) < 0) {
+    if (inpSocket->Bind(API_PORT) < 0) {
         gprintf("API: Cannot bind to port") ;
         return false ;
     }
