@@ -2,12 +2,26 @@
 
 #include "kb11.h"
 #include <circle/logger.h>
+#include <circle/serial.h>
 
 extern KB11 cpu;
 
 extern volatile bool interrupted ;
-extern queue_t netsend_queue ;
-extern queue_t netrecv_queue ;
+extern CSerialDevice *pSerial ;
+
+static char kl11_char = '\0' ;
+
+static int _kbhit() {
+	char c ;
+	int n = pSerial->Read(&c, 1) ;
+	if (n <= 0) {
+		return false ;
+	}
+
+	kl11_char = c ;
+
+	return true ;
+}
 
 KL11::KL11() {
 }
@@ -63,6 +77,21 @@ void KL11::write16(u32 a, u16 v) {
 	}
 }
 
+void KL11::rpoll() {
+	if (rcsr & 0200) {
+		return ;
+	}
+
+	if (_kbhit()) {
+		rbuf = kl11_char & 0377 ;
+		rcsr |= 0200;
+		if (rcsr & 0100) {
+			cpu.interrupt(INTTTYIN, 4);
+		}
+	}
+
+}
+
 // #define KL11_DEBUG
 
 void KL11::xpoll() {
@@ -86,10 +115,7 @@ void KL11::xpoll() {
 
 	if (xbuf) {
 		u8 c = xbuf & 0377 ;
-		if (!queue_try_add(&netsend_queue, &c)) {
-			CLogger::Get()->Write("KL11::xpoll", LogError, "console queue is full") ;
-			return ;
-		}
+		pSerial->Write(&c, 1) ;
 
 #ifdef KL11_DEBUG
 		UINT bw;
@@ -106,19 +132,3 @@ void KL11::xpoll() {
 		cpu.interrupt(INTTTYOUT, 4);
 	}
 }
-
-void KL11::rpoll() {
-	if (rcsr & 0200) {
-		return ;
-	}
-
-	u8 c;
-	if (queue_try_remove(&netrecv_queue, &c)) {
-		rbuf = c & 0377 ;
-		rcsr |= 0200 ;
-		if (rcsr & 0100) {
-			cpu.interrupt(INTTTYIN, 4);
-		}
-	}
-}
-

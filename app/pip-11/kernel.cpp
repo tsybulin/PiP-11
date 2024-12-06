@@ -7,13 +7,10 @@
 #include "ini.h"
 #include "logo.h"
 #include "firmware.h"
-#include "netsend.h"
-#include "netrecv.h"
 #include "api.h"
 
 #define DRIVE "USB:"
 extern volatile bool interrupted ;
-extern queue_t netrecv_queue ;
 
 typedef struct configuration {
     CString name;
@@ -85,7 +82,7 @@ CKernel::CKernel (void)
 :	screen(options.GetWidth(), options.GetHeight()),
 	timer(&interrupt),
 	serial(&interrupt),
-	logger(options.GetLogLevel()),
+	logger(options.GetLogLevel(), &timer),
 	cpuThrottle(CPUSpeedMaximum),
 	net(ipaddress, netmask, gateway, dns, "pip11"),
     usbhci(&interrupt, &timer, true),
@@ -174,13 +171,8 @@ boolean CKernel::Initialize (void) {
 static volatile bool firmwareMode = false ;
 
 TShutdownMode CKernel::Run (void) {
-	CTask *nst = new NetSend(&net) ;
-	nst->SetName("NetSend") ;
-	CTask *nrt = new NetRecv(&net) ;
-	nrt->SetName("NetRecv") ;
-
 	CString txt ;
-	txt.Format("PiP-11/45: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)\r\n", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
+	txt.Format("\033[H\033[JPiP-11/45: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)\r\n\r\n", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
 	this->console.sendString(txt) ;
 
 	if (FR_OK != f_mount(&fileSystem, DRIVE, 1)) {
@@ -215,7 +207,7 @@ TShutdownMode CKernel::Run (void) {
 	bool selected = false ;
 	bool paused = false ;
 
-	console.sendString("> SHOW CONFIGURATION\r\n") ;
+	console.sendString("> SHOW CONFIGURATION\r\n\r\n") ;
 
 	for (int y = 0; y < MODEL_HEIGHT; y++) {
 		for (int x = 0; x < MODEL_WIDTH; x ++) {
@@ -235,15 +227,19 @@ TShutdownMode CKernel::Run (void) {
 		}
 
         CString tmp ;
-		tmp.Format("%d. ", i) ;
+		tmp.Format("    %d. ", i) ;
 		tmp.Append(configurations[i].name) ;
 		tmp.Append("\r\n") ;
-		// console.sendString(tmp) ;
+		console.sendString(tmp) ;
     }
 
-	console.sendString("BOOT>") ;
+	console.sendString("    9. FIRMWARE UPDATE\r\n") ;
+
+	console.sendString("\033[1G\033[15dBOOT>") ;
 
 	unsigned int timeout = timer.GetTicks() + 600 ;
+	int pt = 666 ;
+	int t = 0 ;
 
 	while (!selected && (paused || timer.GetTicks() < timeout)) {
 		TShutdownMode mode = this->console.loop() ;
@@ -257,20 +253,23 @@ TShutdownMode CKernel::Run (void) {
 			selected = false ;
 			paused = true ;
 
-			console.sendString("FIRMWARE>\r\n") ;
+			console.sendString("\033[H\033[JFIRMWARE>") ;
 
 			new Firmware(&net, &fileSystem, DRIVE "/") ;
+			unsigned char c ;
 			while (!interrupted) {
 				scheduler.Yield() ;
+				int n = serial.Read(&c, 1) ;
+				if (n > 0) {
+					console.shutdownMode = ShutdownReboot ;
+					interrupted = true ;
+				}
 			}
 		}
 
-		if (!queue_is_empty(&netrecv_queue)) {
-			unsigned char c ;
-			if (!queue_try_remove(&netrecv_queue, &c)) {
-				continue ;
-			}
-
+		unsigned char c ;
+		int n = serial.Read(&c, 1) ;
+		if (n > 0) {
 			if (!paused) {
 				timeout = timer.GetTicks() + 600 ;
 			}
@@ -303,6 +302,10 @@ TShutdownMode CKernel::Run (void) {
 					selected = true ;
 					break;
 
+				case '9':
+					firmwareMode = true ;
+					break ;
+
 				default:
 					ci = 0 ;
 					selected = false ;
@@ -311,11 +314,16 @@ TShutdownMode CKernel::Run (void) {
 			}
 		}
 
-		if (!paused) {
-			txt.Format("BOOT %d s.>\r\n", (timeout - timer.GetTicks()) / 100) ;
-			this->console.sendString(txt) ;
-		} else {
-			this->console.sendString("BOOT>\r\n") ;
+		t = (timeout - timer.GetTicks()) / 100 ;
+		if (pt != t) {
+			pt = t ;
+			this->console.sendString("\033[1G\033[15d\033[K") ;
+			if (!paused) {
+				txt.Format("BOOT %d s.>", t) ;
+				this->console.sendString(txt) ;
+			} else {
+				this->console.sendString("BOOT>") ;
+			}
 		}
 
 		scheduler.Yield() ;
@@ -325,6 +333,7 @@ TShutdownMode CKernel::Run (void) {
 	const char *rl   = configurations[ci].rl ;
 
 	screen.ClearScreen() ;
+	this->console.sendString("\033[H\033[J") ;
 
 	multiCore.Initialize((char *)rk, (char *)rl, ci > 0) ;
 	// API * api = new API(&net) ;

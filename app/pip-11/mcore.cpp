@@ -7,7 +7,6 @@
 #include <util/queue.h>
 #include "api.h"
 
-extern queue_t netrecv_queue ;
 volatile bool interrupted = false ;
 volatile bool halted = false ;
 
@@ -45,12 +44,7 @@ void MultiCore::Run(unsigned ncore) {
     }
 
     if (ncore == 1) {
-        char c ;
-        while (!interrupted) {
-            if (queue_try_remove(&netrecv_queue, &c)) {
-                console->sendChar(c) ;
-            }
-        }
+        return ;
     }
 
     if (ncore == 2) {

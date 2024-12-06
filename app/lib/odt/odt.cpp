@@ -3,9 +3,10 @@
 #include <arm11/kb11.h>
 #include <util/queue.h>
 #include <circle/logger.h>
+#include <circle/serial.h>
 
 extern KB11 cpu ;
-extern queue_t netrecv_queue ;
+extern CSerialDevice *pSerial ;
 void disasm(u16 ia);
 
 ODT::ODT() :
@@ -34,9 +35,10 @@ void ODT::loop() {
     }
 
     unsigned char c ;
-    if (!queue_try_remove(&netrecv_queue, &c)) {
-        return ;
-    }
+	int n = pSerial->Read(&c, 1) ;
+	if (n <= 0) {
+		return ;
+	}
 
     switch (c) {
         case 010: // backspace

@@ -6,7 +6,7 @@
 extern KB11 cpu;
 
 extern volatile bool interrupted ;
-extern CSerialDevice *pSerial ;
+// extern CSerialDevice *pSerial ;
 
 DL11::DL11() {
 }
@@ -21,15 +21,16 @@ void DL11::clearterminal() {
 static char dl11_char = '\0' ;
 
 static int _kbhit() {
-	char c ;
-	int n = pSerial->Read(&c, 1) ;
-	if (n <= 0) {
-		return false ;
-	}
+	return false ;
+	// char c ;
+	// int n = pSerial->Read(&c, 1) ;
+	// if (n <= 0) {
+	// 	return false ;
+	// }
 
-	dl11_char = c ;
+	// dl11_char = c ;
 
-	return true ;
+	// return true ;
 }
 
 u16 DL11::read16(u32 a) {
@@ -97,8 +98,8 @@ void DL11::xpoll() {
 	}
 
 	if (xbuf) {
-		char c = xbuf & 0177 ;
-		pSerial->Write(&c, 1) ;
+		// char c = xbuf & 0177 ;
+		// pSerial->Write(&c, 1) ;
 	}
 	
 	xcsr |= 0200;

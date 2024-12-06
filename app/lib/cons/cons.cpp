@@ -2,11 +2,11 @@
 #include <circle/string.h>
 #include <circle/util.h>
 #include <circle/logger.h>
+#include <circle/serial.h>
 
 Console *Console::pthis = 0 ;
 
-queue_t netrecv_queue ;
-queue_t netsend_queue ;
+extern CSerialDevice *pSerial ;
 
 Console::Console() :
     shutdownMode(ShutdownNone)
@@ -19,17 +19,15 @@ Console::~Console(void) {
 }
 
 void Console::init() {
-    queue_init(&netsend_queue, 1, 80) ;
-    queue_init(&netrecv_queue, 1, 256) ;
 }
 
 void Console::sendChar(char c) {
-    queue_try_add(&netsend_queue, &c) ;
+    pSerial->Write(&c, 1) ;
 }
 
 void Console::sendString(const char *str) {
     while (*str) {
-        queue_try_add(&netsend_queue, str++) ;
+        pSerial->Write(str++, 1) ;
     }
 }
 
