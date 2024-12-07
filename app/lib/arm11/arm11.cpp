@@ -171,7 +171,6 @@ TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon
 
     while (!interrupted) {
         loop();
-        CScheduler::Get()->Yield() ;
     }
 
     return ShutdownReboot ;

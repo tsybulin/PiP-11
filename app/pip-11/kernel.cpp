@@ -325,8 +325,6 @@ TShutdownMode CKernel::Run (void) {
 				this->console.sendString("BOOT>") ;
 			}
 		}
-
-		scheduler.Yield() ;
 	}
 	
 	const char *rk   = configurations[ci].rk ;

@@ -96,6 +96,7 @@ void MultiCore::Run(unsigned ncore) {
 
 void MultiCore::IPIHandler(unsigned ncore, unsigned nipi) {
     if (nipi == IPI_USER) {
+        console->shutdownMode = ShutdownReboot ;
         interrupted = true ;
     }
 

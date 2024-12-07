@@ -4,6 +4,12 @@
 #include <circle/logger.h>
 #include <circle/serial.h>
 
+#ifndef ARM_ALLOW_MULTI_CORE
+#define ARM_ALLOW_MULTI_CORE
+#endif
+
+#include <circle/multicore.h>
+
 extern KB11 cpu;
 
 extern volatile bool interrupted ;
@@ -84,6 +90,19 @@ void KL11::rpoll() {
 
 	if (_kbhit()) {
 		rbuf = kl11_char & 0377 ;
+		if (rbuf & 0200) {
+			switch (rbuf) {
+				case 0201:
+					CMultiCoreSupport::SendIPI(0, IPI_USER) ;
+					return ;
+				case 0202:
+					CMultiCoreSupport::SendIPI(0, IPI_USER + 1) ;
+					return ;
+				default:
+				    CLogger::Get()->Write("KL11", LogError, "unknown control character %03o", rbuf) ;
+					return ;
+				}
+		}
 		rcsr |= 0200;
 		if (rcsr & 0100) {
 			cpu.interrupt(INTTTYIN, 4);

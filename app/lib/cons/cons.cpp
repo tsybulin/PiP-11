@@ -42,7 +42,9 @@ Console* Console::get() {
 void Console::printf(const char *__restrict format, ...) {
     va_list args ;
     va_start(args, format) ;
-    CLogger::Get()->Write("cons", LogError, format, args) ;
+    CString txt ;
+    txt.FormatV(format, args) ;
+    pthis->sendString(txt) ;
 }
 
 void gprintf(const char *__restrict format, ...) {
