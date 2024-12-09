@@ -16,7 +16,8 @@
 
 #include "boot_defs.h"
 
-#define DRIVE "USB:"
+#define DRIVE "SD:"
+#define NN 17
 
 KB11 cpu;
 int kbdelay = 0;
@@ -27,6 +28,7 @@ ODT odt ;
 
 extern volatile bool interrupted ;
 extern volatile bool halted ;
+extern volatile bool kb11hrottle ;
 
 void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
 	if (cpu.unibus.rk11.crtds[0].obj.lockid) {
@@ -35,7 +37,7 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
 
     for (u8 drv = 0; drv < 2; drv++) {
         char name[26] = DRIVE "/PIP-11/RL11_00.RL02" ;
-        name[18] = '0' + drv ;
+        name[NN] = '0' + drv ;
 
 	    FRESULT fr = f_open(&cpu.unibus.rl11.disks[drv], !drv ? rlfile : name, FA_READ | FA_WRITE);
         if (FR_OK != fr && FR_EXIST != fr) {
@@ -46,7 +48,7 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
 
     for (u8 crtd = 0; crtd < 8; crtd++) {
         char name[26] = DRIVE "/PIP-11/RK11_00.RK05" ;
-        name[18] = '0' + crtd ;
+        name[NN] = '0' + crtd ;
 
         FRESULT fr = f_open(&cpu.unibus.rk11.crtds[crtd], !crtd ? rkfile : name, FA_READ | FA_WRITE);
         if (FR_OK != fr && FR_EXIST != fr) {
@@ -67,7 +69,7 @@ jmp_buf trapbuf;
 
 void trap(u8 vec) { longjmp(trapbuf, vec); }
 
-static volatile bool cpuThrottle = false ;
+// static volatile bool cpuThrottle = false ;
 
 void loop() {
     auto vec = setjmp(trapbuf);
@@ -93,7 +95,7 @@ void loop() {
             continue ;
         }
 
-        if (cpuThrottle) {
+        if (kb11hrottle) {
             u64 now = CTimer::GetClockTicks64() ;
             while (CTimer::GetClockTicks64() - now < 6) {
                 // ;

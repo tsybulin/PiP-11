@@ -98,6 +98,9 @@ void KL11::rpoll() {
 				case 0202:
 					CMultiCoreSupport::SendIPI(0, IPI_USER + 1) ;
 					return ;
+				case 0203:
+					CMultiCoreSupport::SendIPI(0, IPI_USER + 2) ;
+					return ;
 				default:
 				    CLogger::Get()->Write("KL11", LogError, "unknown control character %03o", rbuf) ;
 					return ;

@@ -15,7 +15,7 @@
 #include <circle/logger.h>
 #include <circle/types.h>
 #include <circle/cputhrottle.h>
-#include <circle/usb/usbhcidevice.h>
+#include <sdcard/emmc.h>
 #include <circle/sched/scheduler.h>
 #include <circle/net/netsubsystem.h>
 
@@ -46,7 +46,7 @@ class CKernel {
 		CCPUThrottle		cpuThrottle;
 		CScheduler			scheduler ;
 		CNetSubSystem 		net ;
-		CUSBHCIDevice		usbhci ;
+		CEMMCDevice			emmc ;
 		FATFS				fileSystem ;
 		CI2CMaster    		i2cMaster ;
 

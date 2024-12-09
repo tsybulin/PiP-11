@@ -9,6 +9,7 @@
 
 volatile bool interrupted = false ;
 volatile bool halted = false ;
+volatile bool kb11hrottle = false ;
 
 MultiCore::MultiCore(CMemorySystem *pMemorySystem, Console *pConsole, CCPUThrottle *pCpuThrottle)
 :   CMultiCoreSupport (pMemorySystem),
@@ -59,6 +60,7 @@ void MultiCore::Run(unsigned ncore) {
             // }
 
             cpuThrottle->Update() ;
+            CScheduler::Get()->Yield() ;
         }
     }
 
@@ -102,6 +104,11 @@ void MultiCore::IPIHandler(unsigned ncore, unsigned nipi) {
 
     if (nipi == IPI_USER + 1) {
         halted = true ;
+    }
+
+    if (nipi == IPI_USER + 2) {
+        kb11hrottle = !kb11hrottle ;
+        CLogger::Get()->Write("MultiCore", LogError, "KB11 Throttle %d", kb11hrottle) ;
     }
 
     CMultiCoreSupport::IPIHandler(ncore, nipi) ;

@@ -9,7 +9,7 @@
 #include "firmware.h"
 #include "api.h"
 
-#define DRIVE "USB:"
+#define DRIVE "SD:"
 extern volatile bool interrupted ;
 
 typedef struct configuration {
@@ -85,7 +85,7 @@ CKernel::CKernel (void)
 	logger(options.GetLogLevel(), &timer),
 	cpuThrottle(CPUSpeedMaximum),
 	net(ipaddress, netmask, gateway, dns, "pip11"),
-    usbhci(&interrupt, &timer, true),
+	emmc(&interrupt, &timer, &actLED),
 	i2cMaster(1),
 
 	console(),
@@ -142,17 +142,13 @@ boolean CKernel::Initialize (void) {
 	}
 
 	if (bOK) {
-		bOK = usbhci.Initialize ();
+		bOK = emmc.Initialize() ;
 	}
 
 	if (bOK) {
 		bOK = net.Initialize() ;
 
-		if (bOK) {
-			CString ips ;
-			net.GetConfig()->GetIPAddress()->Format(&ips);
-			logger.Write("CKernel::Initialize", LogError, ips) ;
-		} else {
+		if (!bOK) {
 			logger.Write("CKernel::Initialize", LogError, "net init") ;
 		}
 	}
@@ -174,6 +170,7 @@ TShutdownMode CKernel::Run (void) {
 	CString txt ;
 	txt.Format("\033[H\033[JPiP-11/45: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)\r\n\r\n", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
 	this->console.sendString(txt) ;
+	console.sendChar(7) ;
 
 	if (FR_OK != f_mount(&fileSystem, DRIVE, 1)) {
 		gprintf("USB error!") ;
@@ -330,7 +327,6 @@ TShutdownMode CKernel::Run (void) {
 	const char *rk   = configurations[ci].rk ;
 	const char *rl   = configurations[ci].rl ;
 
-	screen.ClearScreen() ;
 	this->console.sendString("\033[H\033[J") ;
 
 	multiCore.Initialize((char *)rk, (char *)rl, ci > 0) ;
