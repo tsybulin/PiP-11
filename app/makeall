@@ -12,6 +12,10 @@ cd util
 $make $1 $2 || exit
 cd ..
 
+cd sdcard
+$make $1 $2 || exit
+cd ..
+
 cd fatfs
 $make $1 $2 || exit
 cd ..

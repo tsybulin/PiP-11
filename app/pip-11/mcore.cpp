@@ -2,13 +2,14 @@
 
 #include <circle/sched/scheduler.h>
 #include <circle/net/netsubsystem.h>
+#include <circle/logger.h>
 #include <cons/cons.h>
 #include <util/queue.h>
 #include "api.h"
 
-extern queue_t console_queue ;
 volatile bool interrupted = false ;
 volatile bool halted = false ;
+volatile bool kb11hrottle = false ;
 
 MultiCore::MultiCore(CMemorySystem *pMemorySystem, Console *pConsole, CCPUThrottle *pCpuThrottle)
 :   CMultiCoreSupport (pMemorySystem),
@@ -44,12 +45,7 @@ void MultiCore::Run(unsigned ncore) {
     }
 
     if (ncore == 1) {
-        char c ;
-        while (!interrupted) {
-            if (queue_try_remove(&console_queue, &c)) {
-                console->putCharVT(c) ;
-            }
-        }
+        return ;
     }
 
     if (ncore == 2) {
@@ -64,57 +60,55 @@ void MultiCore::Run(unsigned ncore) {
             // }
 
             cpuThrottle->Update() ;
+            CScheduler::Get()->Yield() ;
         }
     }
 
     if (ncore == 3) {
-        CScheduler *scheduler = 0 ;
-        CNetSubSystem *net = 0 ;
+        // CScheduler *scheduler = 0 ;
+        // CNetSubSystem *net = 0 ;
 
-        while (!interrupted) {
-            if (!core3inited) {
-                core3inited = true ;
+        // while (!interrupted) {
+        //     if (!core3inited) {
+        //         core3inited = true ;
 
-                scheduler = new CScheduler() ;
+        //         scheduler = CScheduler::Get() ;
+        //         net =  CNetSubSystem::Get() ;
 
-                const u8 ipaddress[] = {172, 16, 103, 101} ;
-                const u8 netmask[]   = {255, 255, 255, 0} ;
-                const u8 gateway[]   = {172, 16, 103, 254} ;
-                const u8 dns[]       = {172, 16, 103, 254} ;
-                net = new CNetSubSystem(ipaddress, netmask, gateway, dns, "pip11") ;
-                if (!net->Initialize()) {
-                    gprintf("Core3: Net initilize error") ;
-                    return ;
-                }
+        //         api = new API(net) ;
+        //         if (!api->init()) {
+        //             return ;
+        //         }
+        //     }
 
-                api = new API(net) ;
-                if (!api->init()) {
-                    return ;
-                }
-            }
+        //     if (!api || !scheduler) {
+        //         return ;
+        //     }
 
-            if (!api || !scheduler) {
-                return ;
-            }
+        //     TShutdownMode mode = api->loop() ;
+        //     if (mode != ShutdownNone) {
+        //         // interrupted = true ;
+        //         return ;
+        //     }
 
-            TShutdownMode mode = api->loop() ;
-            if (mode != ShutdownNone) {
-                // interrupted = true ;
-                return ;
-            }
-
-            scheduler->Yield() ;
-        }
+        //     scheduler->Yield() ;
+        // }
     }
 }
 
 void MultiCore::IPIHandler(unsigned ncore, unsigned nipi) {
     if (nipi == IPI_USER) {
+        console->shutdownMode = ShutdownReboot ;
         interrupted = true ;
     }
 
     if (nipi == IPI_USER + 1) {
         halted = true ;
+    }
+
+    if (nipi == IPI_USER + 2) {
+        kb11hrottle = !kb11hrottle ;
+        CLogger::Get()->Write("MultiCore", LogError, "KB11 Throttle %d", kb11hrottle) ;
     }
 
     CMultiCoreSupport::IPIHandler(ncore, nipi) ;

@@ -1,188 +1,60 @@
 #include <cons/cons.h>
 #include <circle/string.h>
 #include <circle/util.h>
-#include "status.h"
+#include <circle/logger.h>
+#include <circle/serial.h>
 
 Console *Console::pthis = 0 ;
 
-queue_t keyboard_queue ;
-queue_t console_queue ;
+extern CSerialDevice *pSerial ;
 
-Console::Console(CActLED *actLED, CDeviceNameService *deviceNameService, CInterruptSystem *interrupt, CTimer *timer) :
-    shutdownMode(ShutdownNone),
-    vt52_mode(false),
-    koi7n1(false),
-    buzzPin(23, GPIOModeOutput),
-    keyboard(0),
-    hotkeyHandler(0),
-    hotkeyHandlerCtx(0)
+Console::Console() :
+    shutdownMode(ShutdownNone)
 {
-    buzzPin.Write(HIGH) ;
     pthis = this ;
-
-    this->actLED = actLED ;
-    this->deviceNameService = deviceNameService ;
-    this->interrupt = interrupt ;
-    this->timer = timer ;
-    this->led_ticks = 0 ;
 }
 
 Console::~Console(void) {
     pthis = 0 ;
 }
 
-void Console::init(CScreenDevice *screen) {
-    this->screen = screen ;
-    queue_init(&keyboard_queue, 1, 16) ;
-    queue_init(&console_queue, 1, 256) ;
-
-    charset_G0 = CS_TEXT;
-    charset_G1 = CS_GRAPHICS;
-    saved_charset_G0 = CS_TEXT;
-    saved_charset_G1 = CS_GRAPHICS;
-    charset = &charset_G0;
-    koi7n1 = false ;
-    screenInverted = false ;
-}
-
-void Console::attachKeyboard(CUSBKeyboardDevice *kbd) {
-    keyboard = kbd ;
-    if (keyboard != 0) {
-        keyboard->RegisterRemovedHandler(keyboardRemovedHandler) ;
-        keyboard->RegisterKeyStatusHandlerRaw(keyStatusHandler) ;
-    }
-}
-
-void Console::write(const char *buffer, unsigned col, unsigned row, TScreenColor fg, TScreenColor bg) {
-    while (*buffer) {
-        this->screen->displayChar(*buffer++, col, row, fg, bg) ;
-        if (++col > this->screen->GetColumns() - 1) {
-            col = 0 ;
-            if (++row > this->screen->GetRows() - 1) {
-                row = 0 ;
-            }
-        }
-    }
-}
-
-void Console::drawLine(const char* title, unsigned row) {
-    char line[screen->GetColumns() + 1] ;
-    memset(&line, 0, this->screen->GetColumns() + 1) ; 
-    memset(&line, title ? 0xCD : 0xC4, this->screen->GetColumns()) ; 
-    write(line, 0, row);
-
-    if (!title) {
-        return ;
-    }
-
-    CString tmp ;
-    tmp.Format(" %s ", title) ;
-    write(tmp, (this->screen->GetColumns() - tmp.GetLength()) / 2, row, GREEN_COLOR) ;
+void Console::init() {
 }
 
 void Console::sendChar(char c) {
-    queue_try_add(&keyboard_queue, &c) ;
+    pSerial->Write(&c, 1) ;
 }
 
 void Console::sendString(const char *str) {
     while (*str) {
-        queue_try_add(&keyboard_queue, str++) ;
+        pSerial->Write(str++, 1) ;
     }
-}
-
-void Console::sendEscapeSequence(u8 key) {
-    this->sendString("\033[") ;
-    this->sendChar(key) ;
 }
 
 TShutdownMode Console::loop() {
-    this->keyboardLoop() ;
-    if (this->led_ticks > 0 && this->timer->GetTicks() > this->led_ticks) {
-        this->led_ticks = 0 ;
-        this->actLED->Off() ;
-    }
     return this->shutdownMode ;
-}
-
-void Console::printf(const char *__restrict format, ...) {
-    va_list args ;
-    va_start(args, format) ;
-    CString tmp ;
-    tmp.FormatV(format, args) ;
-    putStringVT100(tmp) ;
 }
 
 Console* Console::get() {
     return pthis ;
 }
 
+void Console::printf(const char *__restrict format, ...) {
+    va_list args ;
+    va_start(args, format) ;
+    CString txt ;
+    txt.FormatV(format, args) ;
+    pthis->sendString(txt) ;
+}
+
 void gprintf(const char *__restrict format, ...) {
     va_list args ;
     va_start(args, format) ;
-    CString tmp ;
-    tmp.FormatV(format, args) ;
-
-    Console::get()->vtFillRegion(30, TEXTMODE_ROWS, TEXTMODE_COLS - 1, TEXTMODE_ROWS, ' ', WHITE_COLOR, CONS_BACKGROUND_COLOR) ;
-    Console::get()->write(tmp, 30, TEXTMODE_ROWS, RED_COLOR) ;
-    // CLogger::Get()->Write("pip", LogError, tmp) ;
+    CLogger::Get()->Write("cons", LogError, format, args) ;
 }
 
 void iprintf(const char *__restrict format, ...) {
     va_list args ;
     va_start(args, format) ;
-    CString tmp ;
-    tmp.FormatV(format, args) ;
-
-    Console::get()->vtFillRegion(0, TEXTMODE_ROWS, 30, TEXTMODE_ROWS, ' ', WHITE_COLOR, CONS_BACKGROUND_COLOR) ;
-    Console::get()->write(tmp, 0, TEXTMODE_ROWS, CONS_BACKGROUND_COLOR) ;
-}
-
-void Console::showStatus() {
-    const u16 *st = status[vt52_mode ? 1 : 0] ;
-    for (int y = 0; y < STATUS_HEIGHT; y++) {
-        for (int x = 0; x < STATUS_WIDTH; x++) {
-			screen->SetPixel(x, y + 456, st[y * STATUS_WIDTH + x]) ;
-        }
-    }
-}
-
-void Console::showRusLat() {
-    unsigned xshift = STATUS_WIDTH + 5 ;
-    unsigned lrshift = koi7n1 ? LATRUS_HEIGHT * LATRUS_WIDTH : 0 ;
-    for (int y = 0; y < LATRUS_HEIGHT; y++) {
-        for (int x = 0; x < LATRUS_WIDTH; x++) {
-			screen->SetPixel(x + xshift, y + 456, latrus[lrshift + y * LATRUS_WIDTH + x]) ;
-        }
-    }
-}
-
-void Console::showThrottle(bool v) {
-    unsigned xshift = STATUS_WIDTH * 2 + 10 ;
-    unsigned thshift = v ? THROTTLE_HEIGHT * THROTTLE_WIDTH : 0 ;
-    for (int y = 0; y < THROTTLE_HEIGHT; y++) {
-        for (int x = 0; x < THROTTLE_WIDTH; x++) {
-			screen->SetPixel(x + xshift, y + 456, throttle[thshift + y * THROTTLE_WIDTH + x]) ;
-        }
-    }
-}
-
-static volatile TKernelTimerHandle kth = 0 ;
-
-static void buzzHandler(TKernelTimerHandle hTimer, void *pParam, void *pContext) {
-    ((CGPIOPin *) pParam)->Write(HIGH) ;
-    kth = 0 ;
-}
-
-void Console::beep() {
-    if (kth != 0) {
-        return ;
-    }
-
-    buzzPin.Write(LOW) ;
-    kth = timer->StartKernelTimer(10, buzzHandler, &buzzPin) ;
-}
-
-void Console::setHotkeyHandler(HotkeyHandler hk, void *context) {
-    this->hotkeyHandler = hk ;
-    this->hotkeyHandlerCtx = context ;
+    CLogger::Get()->Write("cons", LogError, format, args) ;
 }

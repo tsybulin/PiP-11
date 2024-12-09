@@ -3,9 +3,10 @@
 #include <arm11/kb11.h>
 #include <util/queue.h>
 #include <circle/logger.h>
+#include <circle/serial.h>
 
 extern KB11 cpu ;
-extern queue_t keyboard_queue ;
+extern CSerialDevice *pSerial ;
 void disasm(u16 ia);
 
 ODT::ODT() :
@@ -34,9 +35,10 @@ void ODT::loop() {
     }
 
     unsigned char c ;
-    if (!queue_try_remove(&keyboard_queue, &c)) {
-        return ;
-    }
+	int n = pSerial->Read(&c, 1) ;
+	if (n <= 0) {
+		return ;
+	}
 
     switch (c) {
         case 010: // backspace
@@ -86,7 +88,7 @@ void ODT::parseChar(const char c) {
     if ((c == 010 || c == 0177)) {
         if (bufptr > 0) {
             bufptr-- ;
-            cons->putCharVT(0177) ;
+            cons->sendChar(0177) ;
         }
         return ;
     }
@@ -143,7 +145,7 @@ void ODT::parseChar(const char c) {
         buf[++bufptr] = 0 ;
     }
 
-    cons->putCharVT(c) ;
+    cons->sendChar(c) ;
 }
 
 void ODT::parseCommand() {
