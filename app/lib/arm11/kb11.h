@@ -99,6 +99,7 @@ class KB11 {
 
     inline u16 read16(const u16 va, bool d = false, bool src = true) {
         const auto a = mmu.decode<false>(va, currentmode(), d, src);
+        ldat = a ;
         switch (a) {
             case 0777776:
                 return PSW;
@@ -134,9 +135,10 @@ class KB11 {
     u8 interrupt_vector() ;
   private:
     u16 oldPSW;
-    u16 stacklimit, switchregister, displayregister, microbrreg ;
+    u16 stacklimit, switchregister, displayregister, microbrreg, datapath ;
     u16 stackpointer[4]; // Alternate R6 (kernel, super, illegal, user)
     u16 pirqr = 0 ;
+    u32 ldat = 0, lda = 0 ;
 
     u8 cpuPriority = 0 ;
     u8 irqs[256] ;
@@ -516,7 +518,8 @@ class KB11 {
             PSW |= PSW_BIT_N;
         }
         write<l>(op.operand, uval, dpage);
-    }
+        datapath = uval ;
+}
 
     // CLR 0050DD, CLRB 1050DD
     template <auto l> void CLR(const u16 instr) {
@@ -528,6 +531,7 @@ class KB11 {
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         write<l>(op.operand, 0, dpage);
+        datapath = 0 ;
     }
 
     // COM 0051DD, COMB 1051DD
@@ -547,7 +551,8 @@ class KB11 {
         }
         PSW |= PSW_BIT_C;
         write<l>(op.operand, dst, dpage);
-    }
+        datapath = dst ;
+}
 
     // DEC 0053DD, DECB 1053DD
     template <auto l> void _DEC(const u16 instr) {
@@ -563,7 +568,8 @@ class KB11 {
             PSW |= PSW_BIT_V;
         }
         write<l>(op.operand, uval, dpage);
-    }
+        datapath = uval ;
+}
 
     // NEG 0054DD, NEGB 1054DD
     template <auto l> void NEG(const u16 instr) {
@@ -586,6 +592,7 @@ class KB11 {
             PSW |= PSW_BIT_V;
         }
         write<l>(op.operand, dst, dpage);
+        datapath = dst ;
     }
 
     template <auto l> void _ADC(const u16 instr) {
@@ -635,6 +642,7 @@ class KB11 {
                 PSW ^= PSW_BIT_C;
             sval = (sval - 1) & max<l>();
             write<l>(op.operand, sval, dpage);
+            datapath = sval ;
         }
         setZ(sval == 0);
         if (qval == msb<l>())
@@ -670,7 +678,8 @@ class KB11 {
             PSW |= PSW_BIT_V;
         }
         write<l>(op.operand, result, dpage);
-    }
+        datapath = result ;
+}
 
     template <auto l> void ROL(const u16 instr) {
         Operand op = DA<l>(instr) ;
@@ -695,7 +704,8 @@ class KB11 {
         }
         sval &= max<l>();
         write<l>(op.operand, sval, dpage);
-    }
+        datapath = sval ;
+}
 
     template <auto l> void ASR(const u16 instr) {
         Operand op = DA<l>(instr) ;
@@ -717,6 +727,7 @@ class KB11 {
         }
         setZ(uval == 0);
         write<l>(op.operand, uval, dpage);
+        datapath = uval ;
     }
 
     template <auto l> void ASL(const u16 instr) {
@@ -740,6 +751,7 @@ class KB11 {
         sval = (sval << 1) & max<l>();
         setZ(sval == 0);
         write<l>(op.operand, sval, dpage);
+        datapath = sval ;
     }
 
     // INC 0052DD, INCB 1052DD
@@ -796,6 +808,7 @@ class KB11 {
         }
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
         write<len>(op.operand, src, dpage);
+        datapath = src ;
     }
 
     void ADD(const u16 instr);

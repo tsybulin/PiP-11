@@ -7,7 +7,7 @@
 #include "rl11.h"
 #include "dl11.h"
 
-const u32 MEMSIZE = 0700000 ;
+const u32 MEMSIZE = 0760000 ;
 
 class UNIBUS {
 

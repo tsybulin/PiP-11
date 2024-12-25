@@ -4,10 +4,9 @@
 #include <circle/i2cmaster.h>
 #include <cons/cons.h>
 
-#define I2C_SLAVE 014
+#define I2C_SLAVE 050
 const u8 LP11_I2C_LPS = 014 ;
 const u8 LP11_I2C_LPB = 016 ;
-const u8 LP11_I2C_RST = 060 ;
 
 extern KB11 cpu;
 extern volatile bool interrupted ;
@@ -69,7 +68,6 @@ void LP11::write16(u32 a, u16 v) {
 
 void LP11::reset() {
     lpcheck = false ;
-    pI2cMaster->Write(I2C_SLAVE, &LP11_I2C_RST, 1) ;
 }
 
 int lp11_delay = 0;

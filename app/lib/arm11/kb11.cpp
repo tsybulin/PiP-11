@@ -45,10 +45,12 @@ void KB11::reset(u16 start) {
     }
 
     RR[7] = start;
+    datapath = RR[0] ;
     stacklimit = 0400 ;
     switchregister = 0;
     unibus.reset(false);
     wtstate = false;
+    datapath = 0 ;
 }
 
 void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
@@ -121,6 +123,7 @@ void KB11::ADD(const u16 instr) {
         PSW |= PSW_BIT_C;
     }
     write<2>(op.operand, sum, dpage);
+    datapath = sum ;
 }
 
 // SUB 16SSDD
@@ -142,6 +145,7 @@ void KB11::SUB(const u16 instr) {
         PSW |= PSW_BIT_C;
     }
     write<2>(op.operand, uval, dpage);
+    datapath = uval ;
 }
 
 // MUL 070RSS
@@ -229,6 +233,7 @@ void KB11::ASH(const u16 instr) {
 		PSW |= PSW_BIT_N;
 	}
 	RR[reg] = sval;
+    datapath = sval ;
 }
 
 void KB11::ASHC(const u16 instr) {
@@ -264,6 +269,7 @@ void KB11::ASHC(const u16 instr) {
     dst = RR[reg | 1] = dst & 0177777;
     setPSWbit(PSW_BIT_N, ((i) >> 15) & 1) ;
     setPSWbit(PSW_BIT_Z, (dst | i) == 0) ;
+    datapath = dst ;
 }
 
 // XOR 074RDD
@@ -529,11 +535,13 @@ void KB11::WAIT() {
     if (currentmode() == 3) {
         return ;
     }
+    datapath = RR[0] ;
     wtstate = true;
 }
 
 void KB11::RESET() {
     pirqr = 0 ;
+    datapath = RR[0] ;
     if (currentmode()) {
         // RESET is ignored outside of kernel mode
         return;
@@ -563,6 +571,7 @@ void KB11::SWAB(const u16 instr) {
         PSW |= PSW_BIT_N;
     }
     write<2>(op.operand, dst, dpage);
+    datapath = dst ;
 }
 
 // SXT 0067DD
@@ -576,9 +585,11 @@ void KB11::SXT(const u16 instr) {
     if (N()) {
         PSW &= ~PSW_BIT_Z;
         write<2>(op.operand, 0xffff, dpage);
+        datapath = 0xffff ;
     } else {
         PSW |= PSW_BIT_Z;
         write<2>(op.operand, 0, dpage);
+        datapath = 0 ;
     }
 }
 
@@ -586,6 +597,7 @@ void KB11::step() {
     PC = RR[7];
     rflag = 0;
     const auto instr = fetch16();
+    lda = ldat ;
     
     if (!(mmu.SR[0] & 0160000)) {
         mmu.SR[2] = PC;
@@ -604,6 +616,7 @@ void KB11::step() {
                                     }
                                     // Console::get()->printf(" HALT:\r\n");
                                     // printstate();
+                                    datapath = RR[0] ;
                                     cpuStatus = CPU_STATUS_HALT ;
                                     return ;
                                 case 1: // WAIT 000001

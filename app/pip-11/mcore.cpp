@@ -1,7 +1,5 @@
 #include "mcore.h"
 
-#include <circle/sched/scheduler.h>
-#include <circle/net/netsubsystem.h>
 #include <circle/logger.h>
 #include <cons/cons.h>
 #include <util/queue.h>
@@ -18,7 +16,6 @@ MultiCore::MultiCore(CMemorySystem *pMemorySystem, Console *pConsole, CCPUThrott
     bootmon(true),
     console(pConsole),
     cpuThrottle(pCpuThrottle),
-    core3inited(false),
     api(0)
 {
 }
@@ -40,59 +37,42 @@ void MultiCore::Run(unsigned ncore) {
     CLogger::Get()->Write("mcore", LogNotice, "Run %d", ncore) ;
 
     if (ncore == 0) {
-        TShutdownMode mode = startup(rkfile, rlfile, bootmon) ;
-        console->shutdownMode = mode ;
+        CNetSubSystem *net = CNetSubSystem::Get() ;
+        api = new API(net) ;
+
+        while (!interrupted) {
+            TShutdownMode mode = api->loop() ;
+            if (mode != ShutdownNone) {
+                // interrupted = true ;
+                interrupted = true ;
+                console->shutdownMode = mode ;
+                return ;
+            }
+
+            CScheduler::Get()->Yield() ;
+        }
     }
 
     if (ncore == 1) {
-        return ;
+        TShutdownMode mode = startup(rkfile, rlfile, bootmon) ;
+        console->shutdownMode = mode ;
+        interrupted = true ;
     }
 
     if (ncore == 2) {
         while(!interrupted) {
             TShutdownMode mode = console->loop() ;
             if (mode != ShutdownNone) {
+                interrupted = true ;
                 return ;
             }
 
-            // if (api) {
-            //     api->step() ;
-            // }
-
             cpuThrottle->Update() ;
-            CScheduler::Get()->Yield() ;
         }
     }
 
     if (ncore == 3) {
-        // CScheduler *scheduler = 0 ;
-        // CNetSubSystem *net = 0 ;
-
-        // while (!interrupted) {
-        //     if (!core3inited) {
-        //         core3inited = true ;
-
-        //         scheduler = CScheduler::Get() ;
-        //         net =  CNetSubSystem::Get() ;
-
-        //         api = new API(net) ;
-        //         if (!api->init()) {
-        //             return ;
-        //         }
-        //     }
-
-        //     if (!api || !scheduler) {
-        //         return ;
-        //     }
-
-        //     TShutdownMode mode = api->loop() ;
-        //     if (mode != ShutdownNone) {
-        //         // interrupted = true ;
-        //         return ;
-        //     }
-
-        //     scheduler->Yield() ;
-        // }
+        return ;
     }
 }
 
@@ -108,7 +88,7 @@ void MultiCore::IPIHandler(unsigned ncore, unsigned nipi) {
 
     if (nipi == IPI_USER + 2) {
         kb11hrottle = !kb11hrottle ;
-        CLogger::Get()->Write("MultiCore", LogError, "KB11 Throttle %d", kb11hrottle) ;
+        CLogger::Get()->Write("MultiCore", LogError, "KB11 Throttle %s", kb11hrottle ? "LOW" : "HIGH") ;
     }
 
     CMultiCoreSupport::IPIHandler(ncore, nipi) ;

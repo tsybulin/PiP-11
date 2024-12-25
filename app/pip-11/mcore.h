@@ -8,6 +8,8 @@
 #include <circle/memory.h>
 #include <circle/types.h>
 #include <circle/cputhrottle.h>
+#include <circle/sched/scheduler.h>
+#include <circle/net/netsubsystem.h>
 
 #include <cons/cons.h>
 
@@ -26,7 +28,6 @@ class MultiCore : public CMultiCoreSupport {
         bool bootmon ;
         Console *console ;
         CCPUThrottle *cpuThrottle ;
-        bool core3inited ;
         API *api ;
 } ;
 

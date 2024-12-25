@@ -8,6 +8,7 @@
 #include "logo.h"
 #include "firmware.h"
 #include "api.h"
+#include "bootsel.h"
 
 #define DRIVE "SD:"
 extern volatile bool interrupted ;
@@ -113,6 +114,9 @@ boolean CKernel::Initialize (void) {
 
 	if (bOK) {
 		bOK = screen.Initialize() ;
+		if (bOK) {
+			screen.SetScrollRegion(5, 23) ;
+		}
 	}
 
 	if (bOK) {
@@ -167,6 +171,7 @@ boolean CKernel::Initialize (void) {
 static volatile bool firmwareMode = false ;
 
 TShutdownMode CKernel::Run (void) {
+	logger.Write("kernel", LogError, "PiP-11/45: " __DATE__ " " __TIME__) ;
 	CString txt ;
 	txt.Format("\033[H\033[JPiP-11/45: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)\r\n\r\n", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
 	this->console.sendString(txt) ;
@@ -183,7 +188,7 @@ TShutdownMode CKernel::Run (void) {
 		}
 	}
 
-	logger.Write("kernel", LogNotice, DRIVE " mounted") ;
+	logger.Write("kernel", LogError, DRIVE " mounted") ;
 
     if (FRESULT res = ini_parse(DRIVE "/PIP-11/CONFIG.INI", config_handler, nullptr); res != FR_OK) {
         gprintf("Can't load 'PIP-11/CONFIG.INI' err %d", res);
@@ -198,7 +203,7 @@ TShutdownMode CKernel::Run (void) {
 		};
     }
 
-	logger.Write("kernel", LogNotice, "CONFIG.INI parsed") ;
+	logger.Write("kernel", LogError, "CONFIG.INI parsed") ;
 
 	int ci = 0 ;
 	bool selected = false ;
@@ -226,17 +231,23 @@ TShutdownMode CKernel::Run (void) {
         CString tmp ;
 		tmp.Format("    %d. ", i) ;
 		tmp.Append(configurations[i].name) ;
+		if (i > 0) {
+			logger.Write("CFG", LogError, tmp) ;
+		}
 		tmp.Append("\r\n") ;
 		console.sendString(tmp) ;
     }
 
 	console.sendString("    9. FIRMWARE UPDATE\r\n") ;
+	logger.Write("CFG", LogError, "    9. FIRMWARE UPDATE") ;
 
 	console.sendString("\033[1G\033[15dBOOT>") ;
 
-	unsigned int timeout = timer.GetTicks() + 600 ;
+	unsigned int timeout = timer.GetTicks() + 1000 ;
 	int pt = 666 ;
 	int t = 0 ;
+
+	BootSelector *bootsel = new BootSelector(&net) ;
 
 	while (!selected && (paused || timer.GetTicks() < timeout)) {
 		TShutdownMode mode = this->console.loop() ;
@@ -250,6 +261,7 @@ TShutdownMode CKernel::Run (void) {
 			selected = false ;
 			paused = true ;
 
+			logger.Write("kernel", LogError, "FIRMWARE mode") ;
 			console.sendString("\033[H\033[JFIRMWARE>") ;
 
 			new Firmware(&net, &fileSystem, DRIVE "/") ;
@@ -268,7 +280,7 @@ TShutdownMode CKernel::Run (void) {
 		int n = serial.Read(&c, 1) ;
 		if (n > 0) {
 			if (!paused) {
-				timeout = timer.GetTicks() + 600 ;
+				timeout = timer.GetTicks() + 1000 ;
 			}
 
 			switch (c) {
@@ -311,6 +323,25 @@ TShutdownMode CKernel::Run (void) {
 			}
 		}
 
+		if (bootsel->getCPUStatus() == CPU_STATUS_ENABLE) {
+			switch (bootsel->getSwitchRegister()) {
+				case 1:
+				case 2:
+				case 3:
+				case 4:
+					ci = bootsel->getSwitchRegister() ;
+					selected = true ;
+					break ;
+				case 9:
+					firmwareMode = true ;
+					bootsel->SetTerminated() ;
+					break;
+				
+				default:
+					break;
+			}
+		}
+
 		t = (timeout - timer.GetTicks()) / 100 ;
 		if (pt != t) {
 			pt = t ;
@@ -322,19 +353,30 @@ TShutdownMode CKernel::Run (void) {
 				this->console.sendString("BOOT>") ;
 			}
 		}
+
+		scheduler.Yield() ;
 	}
+
+	bootsel->SetTerminated() ;
 	
 	const char *rk   = configurations[ci].rk ;
 	const char *rl   = configurations[ci].rl ;
 
+	logger.Write("kernel", LogError, "Running %s", (const char *)configurations[ci].name) ;
 	this->console.sendString("\033[H\033[J") ;
 
 	multiCore.Initialize((char *)rk, (char *)rl, ci > 0) ;
-	// API * api = new API(&net) ;
-    // api->init() ;
+
+	timer.StartKernelTimer(500, [](TKernelTimerHandle hTimer, void *pParam, void *pContext) {
+		CScreenDevice *scr = (CScreenDevice *)pContext ;
+	    scr->GetFrameBuffer()->SetBacklightBrightness(0) ;
+	}, 0, &screen) ;
+
 	multiCore.Run(0) ;
 
 	f_unmount(DRIVE) ;
 	
+    screen.GetFrameBuffer()->SetBacklightBrightness(100) ;
+	logger.Write("kernel", LogError, "SHUTDOWN") ;
 	return console.shutdownMode ;
 }

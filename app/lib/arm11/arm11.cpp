@@ -175,5 +175,5 @@ TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon
         loop();
     }
 
-    return ShutdownReboot ;
+    return Console::get()->shutdownMode ;
 }

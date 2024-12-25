@@ -23,8 +23,6 @@ class Console {
 		static Console* get() ;
 	private:
 		static Console *pthis ;
-
-	private:
 }  ;
 
 #endif

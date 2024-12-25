@@ -8,9 +8,12 @@ class KT11 {
         u16 SR[4] = {0, 0, 0, 0}; // MM status registers
 
         bool infotrap = false ;
+        bool lastWasData = false ;
 
         template <bool wr> inline u32 decode(const u16 a, const u16 mode, bool d = false, bool src = false) {
+            lastWasData = d ;
             if ((SR[0] & 0401) == 0) {
+                lastWasData = false ;
                 return a > 0157777 ? ((u32)a) + 0600000 : a;
             }
             

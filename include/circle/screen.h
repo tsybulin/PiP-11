@@ -224,6 +224,7 @@ public:
 	void ClearScreen() ;
 	/// \brief Implements a block cursor instead of the default underline
 	void SetCursorBlock(boolean bCursorBlock);
+	void SetScrollRegion (unsigned nStartRow, unsigned nEndRow);
 
 private:
 #ifndef SCREEN_HEADLESS
@@ -249,7 +250,6 @@ private:
 	void NewLine (void);
 	void ReverseScroll (void);
 	void SetCursorMode (boolean bVisible);
-	void SetScrollRegion (unsigned nStartRow, unsigned nEndRow);
 	void SetStandoutMode (unsigned nMode);
 	void Tabulator (void);
 

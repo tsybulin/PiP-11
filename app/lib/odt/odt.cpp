@@ -283,7 +283,7 @@ void ODT::parseCommand() {
                 cons->printf("%06o : ", i) ;
             }
 
-            u16 val = cpu.read16(i) ;
+            u16 val = cpu.unibus.read16(i) ;
             cons->printf("%06o ", val) ;
             
             if (++cnt > 7) {
@@ -315,7 +315,7 @@ void ODT::parseCommand() {
 
         arg1 = (arg1 >> 1) << 1 ;
 
-        cpu.write16(arg1, arg2) ;
+        cpu.unibus.write16(arg1, arg2) ;
 
         bufptr = 0 ;
         return ;
