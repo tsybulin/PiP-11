@@ -45,12 +45,11 @@ void KB11::reset(u16 start) {
     }
 
     RR[7] = start;
-    datapath = RR[0] ;
+    datapath = RR[REG(0)] ;
     stacklimit = 0400 ;
     switchregister = 0;
     unibus.reset(false);
     wtstate = false;
-    datapath = 0 ;
 }
 
 void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
@@ -535,13 +534,13 @@ void KB11::WAIT() {
     if (currentmode() == 3) {
         return ;
     }
-    datapath = RR[0] ;
+    datapath = RR[REG(0)] ;
     wtstate = true;
 }
 
 void KB11::RESET() {
     pirqr = 0 ;
-    datapath = RR[0] ;
+    datapath = RR[REG(0)] ;
     if (currentmode()) {
         // RESET is ignored outside of kernel mode
         return;
@@ -616,7 +615,7 @@ void KB11::step() {
                                     }
                                     // Console::get()->printf(" HALT:\r\n");
                                     // printstate();
-                                    datapath = RR[0] ;
+                                    datapath = RR[REG(0)] ;
                                     cpuStatus = CPU_STATUS_HALT ;
                                     return ;
                                 case 1: // WAIT 000001
