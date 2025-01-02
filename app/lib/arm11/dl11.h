@@ -1,7 +1,7 @@
 #pragma once
 #include <circle/types.h>
 
-#define DL11_CSR 0776500
+#define DL11_CSR 017776500
 
 class DL11 {
 

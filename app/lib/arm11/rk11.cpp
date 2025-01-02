@@ -17,19 +17,19 @@ u16 RK11::read16(const u32 a) {
         case RK11_CSR:
             // 777400 Drive Status
             return rkds;
-        case 0777402:
+        case 017777402:
             // 777402 Error Register
             return rker;
-        case 0777404:
+        case 017777404:
             // 777404 Control Status
             return rkcs & 0xfffe; // go bit is read only
-        case 0777406:
+        case 017777406:
             // 777406 Word Count
             return rkwc;
-        case 0777410:
+        case 017777410:
             // Bus address
             return rkba;
-        case 0777412:
+        case 017777412:
             return rkda;
         default:
             //printf("rk11::read16 invalid read %06o\n", a);
@@ -172,16 +172,16 @@ void RK11::seek() {
 void RK11::write16(const u32 a, const u16 v) {
     // printf("rk11:write16: %06o %06o\n", a, v);
     switch (a) {
-        case 0777404:
+        case 017777404:
             rkcs =  (v & ~0xf080) | (rkcs & 0xf080); // Bits 7 and 12 - 15 are read only
             break;
-        case 0777406:
+        case 017777406:
             rkwc = v;
             break;
-        case 0777410:
+        case 017777410:
             rkba = v;
             break;
-        case 0777412:
+        case 017777412:
             rkda = v;
             drive = v >> 13;
             cylinder = (v >> 5) & 0377;

@@ -3,7 +3,7 @@
 #include <circle/types.h>
 #include <fatfs/ff.h>
 
-#define RK11_CSR 0777400
+#define RK11_CSR 017777400
 
 class RK11 {
 

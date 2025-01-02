@@ -107,58 +107,58 @@ void API::processCommand(api_command_packet_t acp) {
         case API_COMMAND_EXAMINE: {
                 u16 data = 0 ;
                 switch (acp.arg0) {
-                    case 0777707:
+                    case 017777707:
                         data = cpu.RR[7] ;
                         break ;
-                    case 0777706:
+                    case 017777706:
                         data = cpu.RR[6] ;
                         break ;
-                    case 0777705:
+                    case 017777705:
                         data = cpu.RR[5] ;
                         break ;
-                    case 0777704:
+                    case 017777704:
                         data = cpu.RR[4] ;
                         break ;
-                    case 0777703:
+                    case 017777703:
                         data = cpu.RR[3] ;
                         break ;
-                    case 0777702:
+                    case 017777702:
                         data = cpu.RR[2] ;
                         break ;
-                    case 0777701:
+                    case 017777701:
                         data = cpu.RR[1] ;
                         break ;
-                    case 0777700:
+                    case 017777700:
                         data = cpu.RR[0] ;
                         break ;
 
-                    case 0777715:
+                    case 017777715:
                         data = cpu.RR[13] ;
                         break ;
-                    case 0777714:
+                    case 017777714:
                         data = cpu.RR[12] ;
                         break ;
-                    case 0777713:
+                    case 017777713:
                         data = cpu.RR[11] ;
                         break ;
-                    case 0777712:
+                    case 017777712:
                         data = cpu.RR[10] ;
                         break ;
-                    case 0777711:
+                    case 017777711:
                         data = cpu.RR[9] ;
                         break ;
-                    case 0777710:
+                    case 017777710:
                         data = cpu.RR[8] ;
                         break ;
 
-                    case 0777716:
+                    case 017777716:
                         data = cpu.stackpointer[1] ;
                         break ;
-                    case 0777717:
+                    case 017777717:
                         data = cpu.stackpointer[3] ;
                         break ;
 
-                    case 0777570:
+                    case 017777570:
                         data = cpu.displayregister ;
                         break ;
 
@@ -172,61 +172,61 @@ void API::processCommand(api_command_packet_t acp) {
 
         case API_COMMAND_DEPOSIT:
             switch (acp.arg0) {
-                    case 0777707:
+                    case 017777707:
                         cpu.RR[7] = acp.arg1 ;
                         cpu.wtstate = false ;
                         break ;
-                    case 0777706:
+                    case 017777706:
                         cpu.RR[6] = acp.arg1 ;
                         break ;
-                    case 0777705:
+                    case 017777705:
                         cpu.RR[5] = acp.arg1 ;
                         break ;
-                    case 0777704:
+                    case 017777704:
                         cpu.RR[4] = acp.arg1 ;
                         break ;
-                    case 0777703:
+                    case 017777703:
                         cpu.RR[3] = acp.arg1 ;
                         break ;
-                    case 0777702:
+                    case 017777702:
                         cpu.RR[2] = acp.arg1 ;
                         break ;
-                    case 0777701:
+                    case 017777701:
                         cpu.RR[1] = acp.arg1 ;
                         break ;
-                    case 0777700:
+                    case 017777700:
                         cpu.RR[0] = acp.arg1 ;
                         break ;
 
-                    case 0777715:
+                    case 017777715:
                         cpu.RR[13] = acp.arg1;
                         break ;
-                    case 0777714:
+                    case 017777714:
                         cpu.RR[12] = acp.arg1;
                         break ;
-                    case 0777713:
+                    case 017777713:
                         cpu.RR[11] = acp.arg1;
                         break ;
-                    case 0777712:
+                    case 017777712:
                         cpu.RR[10] = acp.arg1;
                         break ;
-                    case 0777711:
+                    case 017777711:
                         cpu.RR[9] = acp.arg1;
                         break ;
-                    case 0777710:
+                    case 017777710:
                         cpu.RR[8] = acp.arg1;
                         break ;
 
-                    case 0777716:
+                    case 017777716:
                         cpu.stackpointer[1] = acp.arg1 ;
                         break ;
-                    case 0777717:
+                    case 017777717:
                         cpu.stackpointer[3] = acp.arg1 ;
                         break ;
 
 
 
-                case 0777570:
+                case 017777570:
                     cpu.switchregister = acp.arg1 ;
                     break ;
                 default:

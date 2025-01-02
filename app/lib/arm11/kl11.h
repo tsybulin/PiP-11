@@ -2,10 +2,10 @@
 
 #include <circle/types.h>
 
-#define KL11_XCSR 0777564
-#define KL11_XBUF 0777566
-#define KL11_RCSR 0777560
-#define KL11_RBUF 0777562
+#define KL11_XCSR 017777564
+#define KL11_XBUF 017777566
+#define KL11_RCSR 017777560
+#define KL11_RBUF 017777562
 
 class KL11 {
 

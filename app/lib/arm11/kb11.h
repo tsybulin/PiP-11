@@ -101,15 +101,15 @@ class KB11 {
         const auto a = mmu.decode<false>(va, currentmode(), d, src);
         ldat = a ;
         switch (a) {
-            case 0777776:
+            case 017777776:
                 return PSW;
-            case 0777774:
+            case 017777774:
                 return stacklimit;
-            case 0777772:
+            case 017777772:
                 return pirqr ;
-            case 0777770:
+            case 017777770:
                 return microbrreg ;
-            case 0777570:
+            case 017777570:
                 return switchregister;
             default:
                 return unibus.read16(a);

@@ -33,12 +33,12 @@ void UNIBUS::write16(const u32 a, const u16 v) {
             return;
         case DL11_CSR:
             switch (a & ~7) {
-            case DL11_CSR:
-                dl11.write16(a, v);
-                return;
-            }
+                case DL11_CSR:
+                    dl11.write16(a, v);
+                    return;
+                }
             trap(INTBUS);
-        case 0777500:
+        case 017777500:
             switch (a) {
                 case LP11_LPS:
                 case LP11_LPD:
@@ -53,33 +53,33 @@ void UNIBUS::write16(const u32 a, const u16 v) {
                 case KW11_CSR:
                     kw11.write16(a, v);
                     return;
-                case 0777572:
+                case 017777572:
                     cpu.mmu.SR[0] = v;
                     return;
-                case 0777574:
+                case 017777574:
                     // cpu.mmu.SR[1] = v; // read-only
                     return;
-                case 0777576:
+                case 017777576:
                     // cpu.mmu.SR[2] = v; // SR2 is read only
                     return;
                 default:
                     cons.write16(a, v);
                     return;
             }
-        case 0772200: // KK
-        case 0772300: // SS
-        case 0777600: // UU
+        case 017772200: // KK
+        case 017772300: // SS
+        case 017777600: // UU
             cpu.mmu.write16(a, v);
             return;
-        case 0772500:
+        case 017772500:
             switch (a) {
-                case 0772516:
+                case 017772516:
                     cpu.mmu.SR[3] = v & 017 ;
                     return ;
                 default:
                     trap(INTBUS);
             }
-        case 0777700:
+        case 017777700:
             cpu.write16(a, v) ;
         default:
             // gprintf("unibus: write to invalid address %06o at %06o", a, cpu.PC);
@@ -107,7 +107,7 @@ u16 UNIBUS::read16(const u32 a) {
                     return dl11.read16(a);
             }
             trap(INTBUS);
-        case 0777500:
+        case 017777500:
             switch (a) {
                 case LP11_LPS:
                 case LP11_LPD:
@@ -119,22 +119,22 @@ u16 UNIBUS::read16(const u32 a) {
                     return ptr_ptp.read16(a) ;
                 case KW11_CSR:
                     return kw11.read16(a);
-                case 0777572:
+                case 017777572:
                     return cpu.mmu.SR[0];
-                case 0777574:
+                case 017777574:
                     return cpu.mmu.SR[1];
-                case 0777576:
+                case 017777576:
                     return cpu.mmu.SR[2];
                 default:
                     return cons.read16(a);
             }
-        case 0772200: // SS
-        case 0772300: // KK
-        case 0777600: // UU
+        case 017772200: // SS
+        case 017772300: // KK
+        case 017777600: // UU
             return cpu.mmu.read16(a);
-        case 0772500:
+        case 017772500:
             switch (a) {
-                case 0772516:
+                case 017772516:
                     return cpu.mmu.SR[3] & 017 ;
                 default:
                     trap(INTBUS);

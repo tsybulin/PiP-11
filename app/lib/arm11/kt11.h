@@ -14,11 +14,11 @@ class KT11 {
             lastWasData = d ;
             if ((SR[0] & 0401) == 0) {
                 lastWasData = false ;
-                return a > 0157777 ? ((u32)a) + 0600000 : a;
+                return a > 0157777 ? ((u32)a) + (u32)017600000 : a;
             }
             
             if (((SR[0] & 0401) == 0400) && src) {
-                return a > 0157777 ? ((u32)a) + 0600000 : a;
+                return a > 0157777 ? ((u32)a) + (u32)017600000 : a;
             }
 
             const auto i = (a >> 13) + (d ? 8 : 0); // page index
@@ -83,6 +83,11 @@ class KT11 {
 
                 pages[mode][i].pdr |= 0200 ;
                 infotrap = true ;
+            }
+
+            // temp. fix for I/O page relocation
+            if (aa > 0760000) {
+                aa += 017000000 ;
             }
 
             return aa ;

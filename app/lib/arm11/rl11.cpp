@@ -78,11 +78,11 @@ enum {
 } ;
 
 enum {
-    DEV_RL_BAE = 0774420,  // RL11 Bus Address Extension Register
-    DEV_RL_MP = 0774406,   // RL11 Multipurpose Register
-    DEV_RL_DA = 0774404,   // RL11 Disk Address
-    DEV_RL_BA = 0774402,   // RL11 Bus Address
-    DEV_RL_CS = RL11_CSR,   // RL11 Control Status
+    DEV_RL_BAE = 017774420,  // RL11 Bus Address Extension Register
+    DEV_RL_MP  = 017774406,  // RL11 Multipurpose Register
+    DEV_RL_DA  = 017774404,  // RL11 Disk Address
+    DEV_RL_BA  = 017774402,  // RL11 Bus Address
+    DEV_RL_CS  = RL11_CSR,   // RL11 Control Status
 };
 
 
