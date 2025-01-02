@@ -10,9 +10,13 @@
 const u32 MEMSIZE = 0760000 ;
 
 class UNIBUS {
-
   public:
-	  u16 core[MEMSIZE/2];
+    UNIBUS() ;
+    ~UNIBUS() ;
+
+    void write16(u32 a, u16 v);
+    u16 read16(u32 a);
+    void reset(bool i2c = true);
 
     KL11 cons;
     RK11 rk11;
@@ -21,10 +25,5 @@ class UNIBUS {
     LP11 lp11;
     RL11 rl11;
     DL11 dl11;
-
-    void write16(u32 a, u16 v);
-    u16 read16(u32 a);
-
-    void reset(bool i2c = true);
-
+    u16 *core ;
 } ;

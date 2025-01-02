@@ -1,9 +1,19 @@
 #include "unibus.h"
 
+#include <circle/alloc.h>
 #include "arm11.h"
 #include "kb11.h"
 
 extern KB11 cpu;
+
+UNIBUS::UNIBUS() {
+    core = (u16 *) malloc(MEMSIZE) ;
+}
+
+UNIBUS::~UNIBUS() {
+    delete(core) ;
+    core = 0 ;
+}
 
 void UNIBUS::write16(const u32 a, const u16 v) {
     if  (a & 1) {
