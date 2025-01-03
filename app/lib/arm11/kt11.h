@@ -20,13 +20,13 @@ class KT11 {
 
         template <bool wr> inline u32 decode18(const u16 a, const u16 mode, bool d = false, bool src = false) {
             const auto i = (a >> 13) + (d ? 8 : 0); // page index
+            const auto block = (a >> 6) & 0177;
+            const auto disp = a & 077;
 
             if (pages[mode][i].nr()) {
                 SR[0] = 0100001 | (d ? 020 : 0) ;
                 SR[0] |= (a >> 12) & ~1;
                 SR[0] |= (mode << 5) ;
-
-                const auto block = (a >> 6) & 0177;
 
                 if (pages[mode][i].ed() ? (block < pages[mode][i].len()) : (block > pages[mode][i].len())) {
                     SR[0] |= (1 << 14);
@@ -48,8 +48,6 @@ class KT11 {
                 trap(INTFAULT) ;
             }
 
-            const auto block = (a >> 6) & 0177;
-            const auto disp = a & 077;
 
             if (pages[mode][i].ed() ? (block < pages[mode][i].len())
                                     : (block > pages[mode][i].len())) {
@@ -91,6 +89,77 @@ class KT11 {
             return aa ;
         }
 
+        template <bool wr> inline u32 decode22(const u16 a, const u16 mode, bool d = false, bool src = false) {
+            const u8 apf = (a >> 13) + (d ? 8 : 0); // active page field, page index
+            const auto bn = (a >> 6) & 0177;
+            const auto dib = a & 077;
+
+            if (pages[mode][apf].nr()) {
+                SR[0] = 0100001 | (d ? 020 : 0) ;
+                SR[0] |= (a >> 12) & ~1;
+                SR[0] |= (mode << 5) ;
+
+                if (pages[mode][apf].ed() ? (bn < pages[mode][apf].len()) : (bn > pages[mode][apf].len())) {
+                    SR[0] |= (1 << 14);
+                }
+                trap(INTFAULT) ;
+            }
+
+            if (wr && !pages[mode][apf].write()) {
+                SR[0] = (1 << 13) | 1 | (d ? 020 : 0) ;
+                SR[0] |= (a >> 12) & ~1;
+                SR[0] |= (mode << 5) ;
+                trap(INTFAULT) ;
+            }
+
+            if (!pages[mode][apf].read()) {
+                SR[0] = (1 << 15) | 1 | (d ? 020 : 0) ;
+                SR[0] |= (a >> 12) & ~1;
+                SR[0] |= (mode << 5) ;
+                trap(INTFAULT) ;
+            }
+
+
+            if (pages[mode][apf].ed() ? (bn < pages[mode][apf].len())
+                                    : (bn > pages[mode][apf].len())) {
+                SR[0] = (1 << 14) | 1 | (d ? 020 : 0);
+                SR[0] |= (a >> 12) & ~1;
+                SR[0] |= (mode << 5) ;
+                trap(INTFAULT) ;
+            }
+
+            if (wr) {
+                pages[mode][apf].pdr |= 1 << 6;
+            }
+
+            u32 aa = (((pages[mode][apf].addr22() + bn) << 6) + dib) & 017777777;
+
+            if (SR[0] & 01000 && (
+                (pages[mode][apf].pdr & 7) == 1 ||
+                (pages[mode][apf].pdr & 7) == 4 ||
+                (wr && (pages[mode][apf].pdr & 7) == 5)
+                ) && !is_internal(aa)
+            ) {
+                if (wr) {
+                    SR[0] = (1 << 13) | 1 | (d ? 020 : 0) ;
+                } else {
+                    SR[0] = (1 << 15) | 1 | (d ? 020 : 0) ;
+                }
+                SR[0] |= (a >> 12) & ~1;
+                SR[0] |= (mode << 5) ;
+
+                pages[mode][apf].pdr |= 0200 ;
+                infotrap = true ;
+            }
+
+            // temp. fix for I/O page relocation
+            // if (aa > 0760000) {
+            //     aa += 017000000 ;
+            // }
+
+            return aa ;
+        }
+
         template <bool wr> inline u32 decode(const u16 a, const u16 mode, bool d = false, bool src = false) {
             lastWasData = d ;
 
@@ -110,7 +179,8 @@ class KT11 {
                 return decode18<wr>(a, mode, d, src) ;
             }
 
-            assertion_failed("22bit relocation", __FILE__, __LINE__) ;
+            // assertion_failed("22bit relocation", __FILE__, __LINE__) ;
+            return decode22<wr>(a, mode, d, src) ;
         }
 
         inline u32 ub_decode(const u32 a) {
@@ -134,6 +204,7 @@ class KT11 {
                 pdr ; // page descriptor register
 
             inline u32 addr() { return par & 07777; }
+            inline u32 addr22() { return par ; }
             inline u8 len() { return (pdr >> 8) & 0x7f; }
             inline bool read() {
                 return ((pdr & 7) == 1) | ((pdr & 7) == 2) | ((pdr & 7) == 4) | ((pdr & 7) == 5) | ((pdr & 7) == 6) ;

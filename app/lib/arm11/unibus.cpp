@@ -104,7 +104,7 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         case 017772500:
             switch (a) {
                 case 017772516:
-                    cpu.mmu.SR[3] = v & 017 ;
+                    cpu.mmu.SR[3] = v & 067 ;
                     return ;
                 default:
                     trap(INTBUS);
@@ -191,7 +191,7 @@ u16 UNIBUS::read16(const u32 a) {
         case 017772500:
             switch (a) {
                 case 017772516:
-                    return cpu.mmu.SR[3] & 017 ;
+                    return cpu.mmu.SR[3] & 067 ;
                 default:
                     trap(INTBUS);
             }
