@@ -48,6 +48,7 @@ void KB11::reset(u16 start) {
     datapath = RR[REG(0)] ;
     stacklimit = 0400 ;
     switchregister = 0;
+    mmu.reset() ;
     unibus.reset(false);
     wtstate = false;
 }
@@ -547,8 +548,7 @@ void KB11::RESET() {
     }
     stacklimit = 0 ;
     unibus.reset();
-    mmu.SR[0]=0;
-    mmu.SR[3]=0;
+    mmu.reset() ;
     PSW = PSW & PSW_BIT_PRIORITY ;
     wtstate = false ;
 }

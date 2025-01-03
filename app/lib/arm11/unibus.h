@@ -14,9 +14,11 @@ class UNIBUS {
     UNIBUS() ;
     ~UNIBUS() ;
 
-    void write16(u32 a, u16 v);
-    u16 read16(u32 a);
-    void reset(bool i2c = true);
+    void write16(u32 a, u16 v) ;
+    void ub_write16(u32 a, u16 v) ;
+    u16 read16(u32 a) ;
+    u16 ub_read16(u32 a) ;
+    void reset(bool i2c = true) ;
 
     KL11 cons;
     RK11 rk11;

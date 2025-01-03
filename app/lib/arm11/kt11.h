@@ -5,22 +5,20 @@
 
 class KT11 {
     public:
+        KT11() ;
+
+        void reset() ;
+        
         u16 SR[4] = {0, 0, 0, 0}; // MM status registers
 
         bool infotrap = false ;
         bool lastWasData = false ;
 
-        template <bool wr> inline u32 decode(const u16 a, const u16 mode, bool d = false, bool src = false) {
-            lastWasData = d ;
-            if ((SR[0] & 0401) == 0) {
-                lastWasData = false ;
-                return a > 0157777 ? ((u32)a) + (u32)017600000 : a;
-            }
-            
-            if (((SR[0] & 0401) == 0400) && src) {
-                return a > 0157777 ? ((u32)a) + (u32)017600000 : a;
-            }
+        inline u32 decode16(const u16 a) {
+            return a > 0157777 ? ((u32)a) + (u32)017600000 : a ;
+        }
 
+        template <bool wr> inline u32 decode18(const u16 a, const u16 mode, bool d = false, bool src = false) {
             const auto i = (a >> 13) + (d ? 8 : 0); // page index
 
             if (pages[mode][i].nr()) {
@@ -93,6 +91,41 @@ class KT11 {
             return aa ;
         }
 
+        template <bool wr> inline u32 decode(const u16 a, const u16 mode, bool d = false, bool src = false) {
+            lastWasData = d ;
+
+            // MMU OFF
+            if ((SR[0] & 0401) == 0) {
+                lastWasData = false ;
+                return decode16(a) ;
+            }
+            
+            // MMU Maintenance, dst-only
+            if (((SR[0] & 0401) == 0400) && src) {
+                return decode16(a) ;
+            }
+
+            // MMU ON, 18bit mode
+            if ((SR[3] & 020) == 0) {
+                return decode18<wr>(a, mode, d, src) ;
+            }
+
+            assertion_failed("22bit relocation", __FILE__, __LINE__) ;
+        }
+
+        inline u32 ub_decode(const u32 a) {
+            // MMU off or UNIBUS 
+            if ((SR[0] & 1) == 0 || (SR[3] & 040) == 0) {
+                return a ;
+            }
+
+            u8 nr = (a & 0760000) >> 13 ;
+
+            u32 aa = (a & 017776) + ((u32)UBMR[nr] | ((u32)UBMR[nr+1] & 077) << 16) ;
+
+            return aa ;
+        }
+
         u16 read16(const u32 a);
         void write16(const u32 a, const u16 v);
 
@@ -118,4 +151,5 @@ class KT11 {
 
     private:
         bool is_internal(const u32 a) ;
+        u16 UBMR[64] ;
 }; 

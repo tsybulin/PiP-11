@@ -1,6 +1,7 @@
 #include "unibus.h"
 
 #include <circle/alloc.h>
+#include <circle/logger.h>
 #include "arm11.h"
 #include "kb11.h"
 
@@ -13,6 +14,18 @@ UNIBUS::UNIBUS() {
 UNIBUS::~UNIBUS() {
     delete(core) ;
     core = 0 ;
+}
+
+void UNIBUS::ub_write16(const u32 a, const u16 v) {
+    u32 aa = cpu.mmu.ub_decode(a) ;
+    
+    if (aa < MEMSIZE) {
+        core[aa >> 1] = v ;
+        return ;
+    }
+
+    CLogger::Get()->Write("UNIBUS", LogError, "ub_write16 non-existent address %08o", aa) ;
+    while (1) {}
 }
 
 void UNIBUS::write16(const u32 a, const u16 v) {
@@ -86,6 +99,17 @@ void UNIBUS::write16(const u32 a, const u16 v) {
             trap(INTBUS);
     }
     return;
+}
+
+u16 UNIBUS::ub_read16(const u32 a) {
+    u32 aa = cpu.mmu.ub_decode(a) ;
+    
+    if (aa < MEMSIZE) {
+        return core[aa >> 1] ;
+    }
+
+    CLogger::Get()->Write("UNIBUS", LogError, "ub_read16 non-existent address %08o", aa) ;
+    while (1) {}
 }
 
 u16 UNIBUS::read16(const u32 a) {

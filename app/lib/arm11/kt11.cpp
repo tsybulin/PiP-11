@@ -1,6 +1,22 @@
 #include "kt11.h"
 
+#include <circle/logger.h>
+
 extern volatile bool interrupted ;
+
+KT11::KT11() {
+    for (int i = 0; i < 64; i++) {
+        UBMR[i] = 0 ;
+    }
+}
+
+void KT11::reset() {
+    for (int i = 0; i < 64; i++) {
+        UBMR[i] = 0 ;
+    }
+    SR[0]=0;
+    SR[3]=0;
+}
 
 bool KT11::is_internal(const u32 a) {
     switch (a) {
@@ -31,6 +47,12 @@ bool KT11::is_internal(const u32 a) {
 }
 
 u16 KT11::read16(const u32 a) {
+    if (a >= 017770200 && a <= 017770376) {
+        u8 n = (a & 0176) >> 1 ;
+        CLogger::Get()->Write("KT11", LogError, "read16 from %08o UBMR[%d]  %d", a, n) ;
+        return UBMR[n] ;
+    }
+
     const u8 i = ((a & 017) >> 1);
     const u8 d = i + 8 ;
 
@@ -60,7 +82,7 @@ u16 KT11::read16(const u32 a) {
         case 017777660:
             return pages[03][d].par;
         default:
-            gprintf("mmu::read16 invalid read from %06o", a);
+            CLogger::Get()->Write("KT11", LogError, "read16 from invalid address %08o", a) ;
             trap(INTBUS); // intbus
             while(!interrupted) {} ;
             return 0 ;
@@ -68,6 +90,13 @@ u16 KT11::read16(const u32 a) {
 }
 
 void KT11::write16(const u32 a, const u16 v) {
+    if (a >= 017770200 && a <= 017770376) {
+        u8 n = (a & 0176) >> 1 ;
+        UBMR[n] = v ;
+        CLogger::Get()->Write("KT11", LogError, "write16 to %08o UBMR[%d] <- %06o", a, n, v) ;
+        return  ;
+    }
+
     const u8 i = ((a & 017) >> 1);
     const u8 d = i + 8 ;
     switch (a & ~017) {
@@ -114,7 +143,7 @@ void KT11::write16(const u32 a, const u16 v) {
             pages[03][d].pdr &= ~0300;
             break;
         default:
-            gprintf("mmu::write16 write to invalid address %06o", a);
+            CLogger::Get()->Write("KT11", LogError, "write16 to invalid address %08o", a) ;
             trap(INTBUS); // intbus
     }
 }

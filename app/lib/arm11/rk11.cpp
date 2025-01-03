@@ -122,13 +122,13 @@ void RK11::readwrite() {
     for (i = 0; i < 256 && rkwc != 0; i++) {
 	    rkba18 = rkba | (rkcs & 060) << 12;     // Include ext addr bits
         if (w) {
-            u16 val = cpu.unibus.read16(rkba18);
+            u16 val = cpu.unibus.ub_read16(rkba18);
             u8 buf[2] = {static_cast<u8>(val & 0xff), static_cast<u8>(val >> 8)} ;
 	        f_write(&crtds[drive], buf, 2, &bcnt); }
 	    else {
 		    u8 buf[2];
 		    f_read(&crtds[drive], buf, 2, &bcnt);
-            cpu.unibus.write16(rkba18, static_cast<u16>(buf[0]) | static_cast<u16>(buf[1]) << 8);
+            cpu.unibus.ub_write16(rkba18, static_cast<u16>(buf[0]) | static_cast<u16>(buf[1]) << 8);
         }
         rkba += 2;
         rkwc++;

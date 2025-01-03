@@ -157,11 +157,11 @@ retry:
     u16 val;
     while (RLWC) {
         if (w) {
-            val = cpu.unibus.read16(RLBA);
+            val = cpu.unibus.ub_read16(RLBA);
             f_write(&disks[drive], &val, 2, &bcnt);
         } else {
             f_read(&disks[drive], &val, 2, &bcnt);
-            cpu.unibus.write16(RLBA, val);
+            cpu.unibus.ub_write16(RLBA, val);
         }
         RLBA += 2;
         RLWC++;
