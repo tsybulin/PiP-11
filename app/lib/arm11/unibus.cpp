@@ -33,10 +33,17 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         //printf("unibus: write16 to odd address %06o\n", a);
         trap(INTBUS);
     }
+
     if (a < MEMSIZE) {
         core[a >> 1] = v;
         return;
     }
+
+    if (a >= 017770200U && a <= 017770376U) {
+        cpu.mmu.write16(a, v) ;
+        return ;
+    }
+
     switch (a & ~077) {
         case RK11_CSR:      
             rk11.write16(a, v);
@@ -117,9 +124,15 @@ u16 UNIBUS::read16(const u32 a) {
         //printf("unibus: read16 from odd address %06o\n", a);
         trap(INTBUS);
     }
+
     if (a < MEMSIZE) {
         return core[a >> 1];
     }
+
+    if (a >= 017770200U && a <= 017770376U) {
+        return cpu.mmu.read16(a) ;
+    }
+
     switch (a & ~077) {
         case RK11_CSR:
             return rk11.read16(a);

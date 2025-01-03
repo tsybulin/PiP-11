@@ -47,9 +47,9 @@ bool KT11::is_internal(const u32 a) {
 }
 
 u16 KT11::read16(const u32 a) {
-    if (a >= 017770200 && a <= 017770376) {
+    if (a >= 017770200U && a <= 017770376U) {
         u8 n = (a & 0176) >> 1 ;
-        CLogger::Get()->Write("KT11", LogError, "read16 from %08o UBMR[%d]  %d", a, n) ;
+        CLogger::Get()->Write("KT11", LogError, "read16 from %08o UBMR[%d]", a, n) ;
         return UBMR[n] ;
     }
 
@@ -90,7 +90,7 @@ u16 KT11::read16(const u32 a) {
 }
 
 void KT11::write16(const u32 a, const u16 v) {
-    if (a >= 017770200 && a <= 017770376) {
+    if (a >= 017770200U && a <= 017770376U) {
         u8 n = (a & 0176) >> 1 ;
         UBMR[n] = v ;
         CLogger::Get()->Write("KT11", LogError, "write16 to %08o UBMR[%d] <- %06o", a, n, v) ;

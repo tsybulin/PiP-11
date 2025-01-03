@@ -223,9 +223,6 @@ void API::processCommand(api_command_packet_t acp) {
                     case 017777717:
                         cpu.stackpointer[3] = acp.arg1 ;
                         break ;
-
-
-
                 case 017777570:
                     cpu.switchregister = acp.arg1 ;
                     break ;
