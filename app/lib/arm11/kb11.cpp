@@ -55,6 +55,10 @@ void KB11::reset(u16 start) {
 
 void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
     const auto a = mmu.decode<true>(va, currentmode(), d, src);
+    writeA(a, v) ;
+}
+
+void KB11::writeA(const u32 a, const u16 v) {
     switch (a) {
         case 017777772: {
                 pirqr = v & 0177000 ;
@@ -103,6 +107,7 @@ void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
             unibus.write16(a, v);
     }
 }
+
 
 // ADD 06SSDD
 void KB11::ADD(const u16 instr) {

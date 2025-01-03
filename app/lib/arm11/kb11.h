@@ -44,6 +44,7 @@ class ODT ;
 class KB11 {
     friend API ;
     friend ODT ;
+    friend UNIBUS ;
   public:
     KB11() ;
 
@@ -99,6 +100,10 @@ class KB11 {
 
     inline u16 read16(const u16 va, bool d = false, bool src = true) {
         const auto a = mmu.decode<false>(va, currentmode(), d, src);
+        return readA(a) ;
+    }
+
+    inline u16 readA(const u32 a) {
         ldat = a ;
         switch (a) {
             case 017777776:
@@ -117,6 +122,7 @@ class KB11 {
     }
 
     void write16(const u16 va, const u16 v, bool d = false, bool src = false);
+    void writeA(const u32 a, const u16 v) ;
     
     inline u8 REG(const u8 reg) {
         return reg > 5 ? reg : PSW & PSW_BIT_REG_SET ? reg + 8 : reg ;

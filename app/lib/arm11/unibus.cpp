@@ -8,7 +8,7 @@
 extern KB11 cpu;
 
 UNIBUS::UNIBUS() {
-    core = (u16 *) malloc(MEMSIZE) ;
+    core = (u16 *) calloc(1, MEMSIZE) ;
 }
 
 UNIBUS::~UNIBUS() {
@@ -42,6 +42,16 @@ void UNIBUS::write16(const u32 a, const u16 v) {
     if (a >= 017770200U && a <= 017770376U) {
         cpu.mmu.write16(a, v) ;
         return ;
+    }
+
+    switch (a) {
+        case 017777776:
+        case 017777774:
+        case 017777772:
+        case 017777770:
+        case 017777570:
+            cpu.writeA(a, v) ;
+            return ;
     }
 
     switch (a & ~077) {
@@ -131,6 +141,15 @@ u16 UNIBUS::read16(const u32 a) {
 
     if (a >= 017770200U && a <= 017770376U) {
         return cpu.mmu.read16(a) ;
+    }
+
+    switch (a) {
+        case 017777776:
+        case 017777774:
+        case 017777772:
+        case 017777770:
+        case 017777570:
+            return cpu.readA(a);
     }
 
     switch (a & ~077) {
