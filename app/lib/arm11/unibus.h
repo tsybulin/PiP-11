@@ -7,25 +7,28 @@
 #include "rl11.h"
 #include "dl11.h"
 
-const u32 MEMSIZE = 0760000 ;
+const u32 MEMSIZE = 017000000 ;
 
 class UNIBUS {
-  public:
-    UNIBUS() ;
-    ~UNIBUS() ;
+    public:
+        UNIBUS() ;
+        ~UNIBUS() ;
 
-    void write16(u32 a, u16 v) ;
-    void ub_write16(u32 a, u16 v) ;
-    u16 read16(u32 a) ;
-    u16 ub_read16(u32 a) ;
-    void reset(bool i2c = true) ;
+        void write16(u32 a, u16 v) ;
+        void ub_write16(u32 a, u16 v) ;
+        u16 read16(u32 a) ;
+        u16 ub_read16(u32 a) ;
+        void reset(bool i2c = true) ;
 
-    KL11 cons;
-    RK11 rk11;
-    KW11 kw11;
-    PC11 ptr_ptp;
-    LP11 lp11;
-    RL11 rl11;
-    DL11 dl11;
-    u16 *core ;
+        KL11 cons;
+        RK11 rk11;
+        KW11 kw11;
+        PC11 ptr_ptp;
+        LP11 lp11;
+        RL11 rl11;
+        DL11 dl11;
+        u16 *core ;
+
+    private:
+        u16 cache_control ;
 } ;

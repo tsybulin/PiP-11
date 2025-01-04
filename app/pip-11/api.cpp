@@ -268,7 +268,8 @@ void API::sendResponce(ApiCommand command, u32 arg0, u16 arg1) {
                 ((cpu.PSW >> 14) << 2) |
                 (kb11hrottle << 4) |
                 (cpu.mmu.lastWasData << 5) |
-                ((cpu.mmu.SR[0] & 1) << 6)
+                (((cpu.mmu.SR[0] & 1) && ((cpu.mmu.SR[3] & 020) == 0) ? 1 : 0) << 6) |
+                (((cpu.mmu.SR[0] & 1) && (cpu.mmu.SR[3] & 020) ? 1 : 0) << 7)
     ;
     queue_try_add(&api_queue, &arp) ;
 }

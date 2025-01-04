@@ -81,7 +81,6 @@ class KT11 {
                 infotrap = true ;
             }
 
-            // temp. fix for I/O page relocation
             if (aa > 0760000) {
                 aa += 017000000 ;
             }

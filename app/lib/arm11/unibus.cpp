@@ -9,6 +9,7 @@ extern KB11 cpu;
 
 UNIBUS::UNIBUS() {
     core = (u16 *) calloc(1, MEMSIZE) ;
+    cache_control = 0 ;
 }
 
 UNIBUS::~UNIBUS() {
@@ -44,6 +45,16 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         return ;
     }
 
+    // MK11 Control ans status registers
+    if (a >= 017772100U && a <= 017772136U) {
+        return ;
+    }
+
+    // KE11 registers
+    if (a >= 017777310U && a <= 017777330U) {
+        return ;
+    }
+
     switch (a) {
         case 017777776:
         case 017777774:
@@ -51,6 +62,10 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         case 017777770:
         case 017777570:
             cpu.writeA(a, v) ;
+            return ;
+
+        case 017777746:
+            cache_control = v ;
             return ;
     }
 
@@ -112,7 +127,7 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         case 017777700:
             cpu.write16(a, v) ;
         default:
-            // gprintf("unibus: write to invalid address %06o at %06o", a, cpu.PC);
+            CLogger::Get()->Write("UNIBUS", LogError, "write16 non-existent address %08o : %06o", a, v) ;
             trap(INTBUS);
     }
     return;
@@ -143,6 +158,16 @@ u16 UNIBUS::read16(const u32 a) {
         return cpu.mmu.read16(a) ;
     }
 
+    // MK11 Control ans status registers
+    if (a >= 017772100U && a <= 017772136U) {
+        return 0 ;
+    }
+
+    // KE11 registers
+    if (a >= 017777310U && a <= 017777330U) {
+        return 0 ;
+    }
+
     switch (a) {
         case 017777776:
         case 017777774:
@@ -150,6 +175,15 @@ u16 UNIBUS::read16(const u32 a) {
         case 017777770:
         case 017777570:
             return cpu.readA(a);
+
+        case 017777764:
+            return 011064 ; // System I/D
+        case 017777762:
+            return 0 ; // Upper Size
+        case 017777760:
+            return (MEMSIZE - 0100U) >> 6; // Lower Size
+        case 017777746:
+            return cache_control ;
     }
 
     switch (a & ~077) {
@@ -196,7 +230,7 @@ u16 UNIBUS::read16(const u32 a) {
                     trap(INTBUS);
             }
         default:
-            //printf("unibus: read from invalid address %06o\n", a);
+            CLogger::Get()->Write("UNIBUS", LogError, "read16 non-existent address %08o", a) ;
             trap(INTBUS);
     }
     return 0;
