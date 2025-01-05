@@ -1,29 +1,45 @@
 #include "kt11.h"
 
+#include <circle/logger.h>
+
 extern volatile bool interrupted ;
+
+KT11::KT11() {
+    for (int i = 0; i < 64; i++) {
+        UBMR[i] = 0 ;
+    }
+}
+
+void KT11::reset() {
+    for (int i = 0; i < 64; i++) {
+        UBMR[i] = 0 ;
+    }
+    SR[0]=0;
+    SR[3]=0;
+}
 
 bool KT11::is_internal(const u32 a) {
     switch (a) {
-        case 0777572:
-        case 0777574:
-        case 0777576:
-        case 0772516:
+        case 017777572:
+        case 017777574:
+        case 017777576:
+        case 017772516:
             return true ;
     }
 
     switch (a & ~017) {
-        case 0772200:
-        case 0772220:
-        case 0772240:
-        case 0772260:
-        case 0772300:
-        case 0772320:
-        case 0772340:
-        case 0772360:
-        case 0777600:
-        case 0777620:
-        case 0777640:
-        case 0777660:
+        case 017772200:
+        case 017772220:
+        case 017772240:
+        case 017772260:
+        case 017772300:
+        case 017772320:
+        case 017772340:
+        case 017772360:
+        case 017777600:
+        case 017777620:
+        case 017777640:
+        case 017777660:
             return true ;
     }
 
@@ -31,36 +47,42 @@ bool KT11::is_internal(const u32 a) {
 }
 
 u16 KT11::read16(const u32 a) {
+    if (a >= 017770200U && a <= 017770376U) {
+        u8 n = (a & 0176) >> 1 ;
+        CLogger::Get()->Write("KT11", LogError, "read16 from %08o UBMR[%d]", a, n) ;
+        return UBMR[n] ;
+    }
+
     const u8 i = ((a & 017) >> 1);
     const u8 d = i + 8 ;
 
     switch (a & ~017) {
-        case 0772200:
+        case 017772200:
             return pages[01][i].pdr;
-        case 0772220:
+        case 017772220:
             return pages[01][d].pdr;
-        case 0772240:
+        case 017772240:
             return pages[01][i].par;
-        case 0772260:
+        case 017772260:
             return pages[01][d].par;
-        case 0772300:
+        case 017772300:
             return pages[00][i].pdr;
-        case 0772320:
+        case 017772320:
             return pages[00][d].pdr;
-        case 0772340:
+        case 017772340:
             return pages[00][i].par;
-        case 0772360:
+        case 017772360:
             return pages[00][d].par;
-        case 0777600:
+        case 017777600:
             return pages[03][i].pdr;
-        case 0777620:
+        case 017777620:
             return pages[03][d].pdr;
-        case 0777640:
+        case 017777640:
             return pages[03][i].par;
-        case 0777660:
+        case 017777660:
             return pages[03][d].par;
         default:
-            gprintf("mmu::read16 invalid read from %06o", a);
+            CLogger::Get()->Write("KT11", LogError, "read16 from invalid address %08o", a) ;
             trap(INTBUS); // intbus
             while(!interrupted) {} ;
             return 0 ;
@@ -68,53 +90,60 @@ u16 KT11::read16(const u32 a) {
 }
 
 void KT11::write16(const u32 a, const u16 v) {
+    if (a >= 017770200U && a <= 017770376U) {
+        u8 n = (a & 0176) >> 1 ;
+        UBMR[n] = v ;
+        CLogger::Get()->Write("KT11", LogError, "write16 to %08o UBMR[%d] <- %06o", a, n, v) ;
+        return  ;
+    }
+
     const u8 i = ((a & 017) >> 1);
     const u8 d = i + 8 ;
     switch (a & ~017) {
-        case 0772200:
+        case 017772200:
             pages[01][i].pdr = v & 077417;
             break;
-        case 0772220:
+        case 017772220:
             pages[01][d].pdr = v & 077417;
             break;
-        case 0772240:
-            pages[01][i].par = v & 07777;
+        case 017772240:
+            pages[01][i].par = v;
             pages[01][i].pdr &= ~0300;
             break;
-        case 0772260:
-            pages[01][d].par = v & 07777;
+        case 017772260:
+            pages[01][d].par = v ;
             pages[01][d].pdr &= ~0300;
             break;
-        case 0772300:
+        case 017772300:
             pages[00][i].pdr = v & 077417;
             break;
-        case 0772320:
+        case 017772320:
             pages[00][d].pdr = v & 077417;
             break;
-        case 0772340:
-            pages[00][i].par = v & 07777;
+        case 017772340:
+            pages[00][i].par = v;
             pages[00][i].pdr &= ~0300;
             break;
-        case 0772360:
-            pages[00][d].par = v & 07777;
+        case 017772360:
+            pages[00][d].par = v;
             pages[00][d].pdr &= ~0300;
             break;
-        case 0777600:
+        case 017777600:
             pages[03][i].pdr = v & 077417;
             break;
-        case 0777620:
+        case 017777620:
             pages[03][d].pdr = v & 077417;
             break;
-        case 0777640:
-            pages[03][i].par = v & 07777;
+        case 017777640:
+            pages[03][i].par = v;
             pages[03][i].pdr &= ~0300;
             break;
-        case 0777660:
-            pages[03][d].par = v & 07777;
+        case 017777660:
+            pages[03][d].par = v;
             pages[03][d].pdr &= ~0300;
             break;
         default:
-            gprintf("mmu::write16 write to invalid address %06o", a);
+            CLogger::Get()->Write("KT11", LogError, "write16 to invalid address %08o", a) ;
             trap(INTBUS); // intbus
     }
 }

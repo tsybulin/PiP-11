@@ -2,7 +2,7 @@
 
 #include <circle/types.h>
 
-#define KW11_CSR 0777546
+#define KW11_CSR 017777546
 
 class KW11 {
   public:

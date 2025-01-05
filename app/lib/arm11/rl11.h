@@ -37,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <circle/types.h>
 #include <fatfs/ff.h>
 
-#define RL11_CSR 0774400
+#define RL11_CSR 017774400
 
 class RL11 {
 

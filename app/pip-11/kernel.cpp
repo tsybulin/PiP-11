@@ -171,9 +171,9 @@ boolean CKernel::Initialize (void) {
 static volatile bool firmwareMode = false ;
 
 TShutdownMode CKernel::Run (void) {
-	logger.Write("kernel", LogError, "PiP-11/45: " __DATE__ " " __TIME__) ;
+	logger.Write("kernel", LogError, "PiP-11/70: " __DATE__ " " __TIME__) ;
 	CString txt ;
-	txt.Format("\033[H\033[JPiP-11/45: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)\r\n\r\n", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
+	txt.Format("\033[H\033[JPiP-11/70: " __DATE__ " " __TIME__ " %dx%d (%dx%d) (%dx%d)\r\n\r\n", screen.GetWidth(), screen.GetHeight(), screen.GetColumns(), screen.GetRows(), screen.getCharWidth(), screen.getCharHeight()) ;
 	this->console.sendString(txt) ;
 	console.sendChar(7) ;
 

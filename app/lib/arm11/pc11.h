@@ -2,10 +2,10 @@
 
 #include <circle/types.h>
 
-#define PC11_PRS 0777550
-#define PC11_PRB 0777552
-#define PC11_PPS 0777554
-#define PC11_PPB 0777556
+#define PC11_PRS 017777550
+#define PC11_PRB 017777552
+#define PC11_PPS 017777554
+#define PC11_PPB 017777556
 
 class PC11 {
     public:

@@ -48,14 +48,19 @@ void KB11::reset(u16 start) {
     datapath = RR[REG(0)] ;
     stacklimit = 0400 ;
     switchregister = 0;
+    mmu.reset() ;
     unibus.reset(false);
     wtstate = false;
 }
 
 void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
     const auto a = mmu.decode<true>(va, currentmode(), d, src);
+    writeA(a, v) ;
+}
+
+void KB11::writeA(const u32 a, const u16 v) {
     switch (a) {
-        case 0777772: {
+        case 017777772: {
                 pirqr = v & 0177000 ;
                 u8 pia = 0 ;
                 if (pirqr & 01000) {
@@ -86,22 +91,23 @@ void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
             }
 
             break ;
-        case 0777776:
+        case 017777776:
             writePSW(v);
             break;
-        case 0777774:
+        case 017777774:
             stacklimit = v & 0177400 ;
             break;
-        case 0777770:
+        case 017777770:
             microbrreg = v ;
             break ;
-        case 0777570:
+        case 017777570:
             displayregister = v;
             break;
         default:
             unibus.write16(a, v);
     }
 }
+
 
 // ADD 06SSDD
 void KB11::ADD(const u16 instr) {
@@ -547,8 +553,7 @@ void KB11::RESET() {
     }
     stacklimit = 0 ;
     unibus.reset();
-    mmu.SR[0]=0;
-    mmu.SR[3]=0;
+    mmu.reset() ;
     PSW = PSW & PSW_BIT_PRIORITY ;
     wtstate = false ;
 }

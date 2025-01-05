@@ -2,8 +2,8 @@
 
 #include <circle/types.h>
 
-#define LP11_LPS 0777514
-#define LP11_LPD 0777516
+#define LP11_LPS 017777514
+#define LP11_LPD 017777516
 
 class LP11 {
 
