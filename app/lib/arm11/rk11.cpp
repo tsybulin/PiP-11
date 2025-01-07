@@ -103,7 +103,7 @@ void RK11::readwrite() {
         return;
     }
 
-    if (rkdelay++ < 60) {         // Delay READ/WRITE by 50 cpu cycles. needed for DOS/BATCH
+    if (rkdelay++ < 6) {         // Delay READ/WRITE by 50 cpu cycles. needed for DOS/BATCH
         return ;
     }
 

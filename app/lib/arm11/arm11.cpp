@@ -57,6 +57,16 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
         }
     }
 
+    for (u8 u = 0; u < TC11_UNITS; u++) {
+        char name[26] = DRIVE "/PIP-11/TC11_00.TAPE" ;
+        name[NN] = '0' + u ;
+        FRESULT fr = f_open(&cpu.unibus.tc11.units[u].file, name, FA_READ | FA_WRITE | FA_OPEN_ALWAYS) ;
+        if (FR_OK != fr && FR_EXIST != fr) {
+            gprintf("f_open(%s) error: (%d)", name, fr) ;
+            while (!interrupted) ;
+        }
+    }
+
     clkdiv = (u64)1000000 / (u64)60;
     systime = CTimer::GetClockTicks64() ;
 	
@@ -123,8 +133,9 @@ void loop() {
             }
         }
         
-        cpu.unibus.rk11.step();
-        cpu.unibus.rl11.step();
+        cpu.unibus.rk11.step() ;
+        cpu.unibus.rl11.step() ;
+        cpu.unibus.tc11.step() ;
         cpu.unibus.ptr_ptp.step() ;
         cpu.unibus.lp11.step() ;
         cpu.pirq() ;

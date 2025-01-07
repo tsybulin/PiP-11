@@ -67,6 +67,14 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         case 017777746:
             cache_control = v ;
             return ;
+
+        case TC11_ST:
+        case TC11_CM:
+        case TC11_WC:
+        case TC11_BA:
+        case TC11_DT:
+            tc11.write16(a, v) ;
+            return ;
     }
 
     switch (a & ~077) {
@@ -184,6 +192,12 @@ u16 UNIBUS::read16(const u32 a) {
             return (MEMSIZE - 0100U) >> 6; // Lower Size
         case 017777746:
             return cache_control ;
+        case TC11_ST:
+        case TC11_CM:
+        case TC11_WC:
+        case TC11_BA:
+        case TC11_DT:
+            return tc11.read16(a) ;
     }
 
     switch (a & ~077) {
@@ -241,6 +255,7 @@ void UNIBUS::reset(bool i2c) {
     dl11.clearterminal();
     rk11.reset();
     rl11.reset();
+    tc11.reset() ;
     kw11.write16(KW11_CSR, 0x00); // disable line clock INTR
     if (i2c) {
         ptr_ptp.reset() ;

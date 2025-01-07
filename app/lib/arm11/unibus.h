@@ -6,6 +6,7 @@
 #include "lp11.h"
 #include "rl11.h"
 #include "dl11.h"
+#include "tc11.h"
 
 const u32 MEMSIZE = 004000000 ; // 1024K
                   //017000000 ;
@@ -28,6 +29,7 @@ class UNIBUS {
         LP11 lp11;
         RL11 rl11;
         DL11 dl11;
+        TC11 tc11 ;
         u16 *core ;
 
     private:
