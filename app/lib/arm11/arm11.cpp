@@ -16,27 +16,26 @@
 
 #include "boot_defs.h"
 
-#define DRIVE "SD:"
+#define BASEPATH "SD:/PIP-11/"
 #define NN 17
 
 KB11 cpu;
 int kbdelay = 0;
 int clkdelay = 0;
 u64 systime,nowtime,clkdiv;
-FIL bload;
 ODT odt ;
 
 extern volatile bool interrupted ;
 extern volatile bool halted ;
 extern volatile bool kb11hrottle ;
 
-void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
+void setup(const char *rkfile, const char *rlfile, const bool bBootmon) {
 	if (cpu.unibus.rk11.crtds[0].obj.lockid) {
 		return ;
     }
 
-    for (u8 drv = 0; drv < 2; drv++) {
-        char name[26] = DRIVE "/PIP-11/RL11_00.RL02" ;
+    for (u8 drv = 0; drv < 4; drv++) {
+        char name[26] = BASEPATH "RL11_00.RL02" ;
         name[NN] = '0' + drv ;
 
 	    FRESULT fr = f_open(&cpu.unibus.rl11.disks[drv], !drv ? rlfile : name, FA_READ | FA_WRITE);
@@ -47,7 +46,7 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
     }
 
     for (u8 crtd = 0; crtd < 8; crtd++) {
-        char name[26] = DRIVE "/PIP-11/RK11_00.RK05" ;
+        char name[26] = BASEPATH "RK11_00.RK05" ;
         name[NN] = '0' + crtd ;
 
         FRESULT fr = f_open(&cpu.unibus.rk11.crtds[crtd], !crtd ? rkfile : name, FA_READ | FA_WRITE);
@@ -58,7 +57,7 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
     }
 
     for (u8 u = 0; u < TC11_UNITS; u++) {
-        char name[26] = DRIVE "/PIP-11/TC11_00.TAPE" ;
+        char name[26] = BASEPATH "TC11_00.TAPE" ;
         name[NN] = '0' + u ;
         FRESULT fr = f_open(&cpu.unibus.tc11.units[u].file, name, FA_READ | FA_WRITE | FA_OPEN_ALWAYS) ;
         if (FR_OK != fr && FR_EXIST != fr) {
@@ -78,8 +77,6 @@ void setup(const char *rkfile, const char *rlfile, const bool bootmon) {
 jmp_buf trapbuf;
 
 void trap(u8 vec) { longjmp(trapbuf, vec); }
-
-// static volatile bool cpuThrottle = false ;
 
 void loop() {
     auto vec = setjmp(trapbuf);

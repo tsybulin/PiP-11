@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class RL11 {
 
 public:
-FIL disks[2];
+FIL disks[4];
 void write16(u32 a, u16 v);
 u16 read16(u32 a);
 void reset();
