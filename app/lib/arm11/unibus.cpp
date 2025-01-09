@@ -55,6 +55,12 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         return ;
     }
 
+    // VT11 registers
+    if (a >= 017772000U && a <= 017772036U) {
+        vt11.write16(a, v) ;
+        return ;
+    }
+
     switch (a) {
         case 017777776:
         case 017777774:
@@ -176,6 +182,11 @@ u16 UNIBUS::read16(const u32 a) {
         return 0 ;
     }
 
+    // VT11 registers
+    if (a >= 017772000U && a <= 017772036U) {
+        return vt11.read16(a);
+    }
+
     switch (a) {
         case 017777776:
         case 017777774:
@@ -244,7 +255,7 @@ u16 UNIBUS::read16(const u32 a) {
                     trap(INTBUS);
             }
         default:
-            CLogger::Get()->Write("UNIBUS", LogError, "read16 non-existent address %08o", a) ;
+            CLogger::Get()->Write("UNIBUS", LogError, "read16  non-existent address %08o", a) ;
             trap(INTBUS);
     }
     return 0;

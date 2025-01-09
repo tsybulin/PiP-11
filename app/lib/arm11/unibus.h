@@ -7,6 +7,7 @@
 #include "rl11.h"
 #include "dl11.h"
 #include "tc11.h"
+#include "vt11.h"
 
 const u32 MEMSIZE = //004000000 ; // 1024K
                   017760000 ; // 4088K
@@ -30,6 +31,7 @@ class UNIBUS {
         RL11 rl11;
         DL11 dl11;
         TC11 tc11 ;
+        VT11 vt11 ;
         u16 *core ;
 
     private:
