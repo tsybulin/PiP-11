@@ -114,12 +114,28 @@ void KL11::rpoll() {
 
 }
 
+static u64 lx = 0 ; 
+
 // #define KL11_DEBUG
 
 void KL11::xpoll() {
 	if (xcsr & 0200) {
 		return ;
 	}
+
+	// rate output limit to about 28800 bit/s
+	u64 t = CTimer::GetClockTicks64() ;
+
+	if (lx == 0) {
+		lx = t ;
+	} else {
+		if (t - lx < 315lu) {
+			return ;
+		}
+
+		lx = t ;
+	}
+
 
 #ifdef KL11_DEBUG
 	static FIL ft ;

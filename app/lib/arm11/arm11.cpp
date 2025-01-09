@@ -169,9 +169,8 @@ void loop() {
         
         cpu.unibus.cons.xpoll() ;
         cpu.unibus.dl11.xpoll() ;
-        // }
 
-        if (kbdelay++ == 2000) {
+        if (kbdelay++ > 60) {
             cpu.unibus.cons.rpoll() ;
             cpu.unibus.dl11.rpoll() ;
             kbdelay = 0;
