@@ -8,8 +8,8 @@
 #include "dl11.h"
 #include "tc11.h"
 
-const u32 MEMSIZE = 004000000 ; // 1024K
-                  //017000000 ;
+const u32 MEMSIZE = //004000000 ; // 1024K
+                  017760000 ; // 4088K
 
 class UNIBUS {
     public:
