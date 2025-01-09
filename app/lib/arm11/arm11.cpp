@@ -7,6 +7,7 @@
 #include <circle/setjmp.h>
 #include <circle/timer.h>
 #include <circle/sched/scheduler.h>
+#include <circle/logger.h>
 
 #ifndef ARM_ALLOW_MULTI_CORE
 #define ARM_ALLOW_MULTI_CORE
@@ -69,8 +70,37 @@ void setup(const char *rkfile, const char *rlfile, const bool bBootmon) {
     clkdiv = (u64)1000000 / (u64)60;
     systime = CTimer::GetClockTicks64() ;
 	
-    cpu.reset(bootmon ? BOOTMON_BASE : BOOTRK_BASE);
-    // cpu.reset(bootmon ? ABSLOADER_BASE : BOOTRK_BASE);
+    DIR dir ;
+    FILINFO fno ;
+    FIL of ;
+    u16 w ;
+    UINT br ;
+    char fname[100] ;
+
+    FRESULT fr = f_findfirst(&dir, &fno, BASEPATH, "*.OVL") ;
+    while (fr == FR_OK && fno.fname[0]) {
+        strcpy(fname, BASEPATH) ;
+        strcat(fname, fno.fname) ;
+
+        FRESULT fr1 = f_open(&of, fname, FA_READ | FA_OPEN_EXISTING) ;
+        if (fr1 == FR_OK || fr1 == FR_EXIST) {
+            fr1 = f_read(&of, &w, 2, &br) ;
+            u16 a = w ;
+            CLogger::Get()->Write("ARM11", LogError, "load %s to %06o", fno.fname, a) ;
+            fr1 = f_read(&of, &w, 2, &br) ;
+            while (fr1 == FR_OK && br == 2) {
+                cpu.unibus.write16(a, w) ;
+                fr1 = f_read(&of, &w, 2, &br) ;
+                a += 2 ;
+            }
+        } else {
+            CLogger::Get()->Write("ARM11", LogError, "f_open err %s %d", fname, fr1) ;
+        }
+        f_close(&of) ;
+        fr = f_findnext(&dir, &fno) ;
+    }
+    
+    cpu.reset(bBootmon ? BOOTMON_BASE : BOOTRK_BASE);
     cpu.cpuStatus = CPU_STATUS_ENABLE ;
 }
 

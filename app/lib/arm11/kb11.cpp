@@ -2,9 +2,6 @@
 
 #include <circle/setjmp.h>
 
-#include "bootmon.h"
-#include "bootstrap.h"
-#include "boot_defs.h"
 #include <cons/cons.h>
 #include <circle/logger.h>
 
@@ -32,18 +29,6 @@ KB11::KB11() {
 }
 
 void KB11::reset(u16 start) {
-    for (int i = 0; i < BOOTSTRAP_LENGTH; i++) {
-        unibus.write16(BOOTSTRAP_BASE + (i * 2), bootstrap[i]);
-    }
-
-    for (int i = 0; i < ABSLOADER_LENGTH; i++) {
-        unibus.write16(ABSLOADER_BASE + (i * 2), absloader[i]);
-    }
-
-    for (int i = 0; i < BOOTMON_LENGTH; i++) {
-        unibus.write16(BOOTMON_BASE + (i * 2), bootmon[i]);
-    }
-
     RR[7] = start;
     datapath = RR[REG(0)] ;
     stacklimit = 0400 ;
