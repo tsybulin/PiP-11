@@ -16,7 +16,7 @@ class Console {
 		void init() ;
 		TShutdownMode loop() ;
 		volatile TShutdownMode shutdownMode ;
-		void sendChar(char c) ;
+		bool sendChar(const char c) ;
 		void sendString(const char *str) ;
 		void printf(const char *__restrict format, ...) ;
 

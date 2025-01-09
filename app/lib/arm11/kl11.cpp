@@ -137,7 +137,10 @@ void KL11::xpoll() {
 
 	if (xbuf) {
 		u8 c = xbuf & 0377 ;
-		pSerial->Write(&c, 1) ;
+		if (pSerial->Write(&c, 1) != 1) {
+			// CLogger::Get()->Write("KL11", LogError, "xpoll send error") ;
+			return ;
+		}
 
 #ifdef KL11_DEBUG
 		UINT bw;

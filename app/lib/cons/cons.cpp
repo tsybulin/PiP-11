@@ -21,13 +21,15 @@ Console::~Console(void) {
 void Console::init() {
 }
 
-void Console::sendChar(char c) {
-    pSerial->Write(&c, 1) ;
+bool Console::sendChar(const char c) {
+    return pSerial->Write(&c, 1) == 1 ;
 }
 
 void Console::sendString(const char *str) {
     while (*str) {
-        pSerial->Write(str++, 1) ;
+        if (sendChar(*str)) {
+            str++ ;
+        }
     }
 }
 
