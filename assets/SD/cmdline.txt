@@ -1,1 +1,1 @@
-width=640 height=480 backlight=100 loglevel=2 fast=true socmaxtemp=60 gpiofanpin=4
+width=800 height=480 backlight=100 loglevel=2 fast=true socmaxtemp=60 gpiofanpin=4
