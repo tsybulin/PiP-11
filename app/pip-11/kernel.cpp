@@ -213,13 +213,13 @@ TShutdownMode CKernel::Run (void) {
 
 	for (int y = 0; y < MODEL_HEIGHT; y++) {
 		for (int x = 0; x < MODEL_WIDTH; x ++) {
-			screen.SetPixel(x, y + 16, model[y * MODEL_WIDTH + x]) ;
+			screen.SetPixel(x, y, model[y * MODEL_WIDTH + x]) ;
 		}
 	}
 
 	for (int y = 0; y < LOGO_HEIGHT; y++) {
 		for (int x = 0; x < LOGO_WIDTH; x ++) {
-			screen.SetPixel(options.GetWidth() - LOGO_WIDTH + x, y + 16, logo[y * LOGO_WIDTH + x]) ;
+			screen.SetPixel(options.GetWidth() - LOGO_WIDTH + x, y, logo[y * LOGO_WIDTH + x]) ;
 		}
 	}
 	
