@@ -15,6 +15,7 @@ enum INTVEC : u8 {
     INTPTR    = 0070,
     INTPTP    = 0074,
     INTCLOCK  = 0100,
+    INTPCLK   = 0104,
     INTRL     = 0160,
     INTLP     = 0200,
     INTTC     = 0214,

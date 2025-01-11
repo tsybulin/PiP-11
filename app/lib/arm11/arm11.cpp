@@ -23,7 +23,7 @@
 KB11 cpu;
 int kbdelay = 0;
 int clkdelay = 0;
-u64 systime,nowtime,clkdiv;
+u64 systime,nowtime,clkdiv, ptime;
 ODT odt ;
 
 extern volatile bool interrupted ;
@@ -69,6 +69,7 @@ void setup(const char *rkfile, const char *rlfile, const bool bBootmon) {
 
     clkdiv = (u64)1000000 / (u64)60;
     systime = CTimer::GetClockTicks64() ;
+    ptime = systime ;
 	
     DIR dir ;
     FILINFO fno ;
@@ -180,6 +181,11 @@ void loop() {
         if (nowtime - systime > clkdiv) {
             cpu.unibus.kw11.tick();
             systime = nowtime;
+        }
+
+        if (nowtime - ptime > 10ul) { // 100 kHz
+            ptime = nowtime ;
+            cpu.unibus.kw11.ptick() ;
         }
 
         if (cpu.stackTrap == STACK_TRAP_YELLOW) {

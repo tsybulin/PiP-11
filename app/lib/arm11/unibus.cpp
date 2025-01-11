@@ -132,6 +132,11 @@ void UNIBUS::write16(const u32 a, const u16 v) {
             return;
         case 017772500:
             switch (a) {
+                case KW11P_CSR:
+                case KW11P_CSB:
+                case KW11P_CTR:
+                    kw11.write16(a, v) ;
+                    return ;
                 case 017772516:
                     cpu.mmu.SR[3] = v & 067 ;
                     return ;
@@ -249,6 +254,10 @@ u16 UNIBUS::read16(const u32 a) {
             return cpu.mmu.read16(a);
         case 017772500:
             switch (a) {
+                case KW11P_CSR:
+                case KW11P_CSB:
+                case KW11P_CTR:
+                    return kw11.read16(a);
                 case 017772516:
                     return cpu.mmu.SR[3] & 067 ;
                 default:
@@ -267,7 +276,7 @@ void UNIBUS::reset(bool i2c) {
     rk11.reset();
     rl11.reset();
     tc11.reset() ;
-    kw11.write16(KW11_CSR, 0x00); // disable line clock INTR
+    kw11.reset() ;
     if (i2c) {
         ptr_ptp.reset() ;
         lp11.reset();
