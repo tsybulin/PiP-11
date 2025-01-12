@@ -28,6 +28,7 @@ void KW11::write16(u32 a, u16 v) {
 
         default:
             CLogger::Get()->Write("KW11", LogError, "write16 non-existent address %08o : %06o", a, v) ;
+			cpu.errorRegister |= 020 ;
             trap(INTBUS);
     }
 }
@@ -50,6 +51,7 @@ u16 KW11::read16(u32 a) {
 
         default:
             CLogger::Get()->Write("KW11", LogError, "read16  non-existent address %08o", a) ;
+			cpu.errorRegister |= 020 ;
             trap(INTBUS);
             return 0 ;
     }
@@ -59,6 +61,8 @@ void KW11::tick() {
     csr |= (1 << 7);
     if (csr & (1 << 6)) {
         cpu.interrupt(INTCLOCK, 6);
+    } else {
+        cpu.clearIRQ(INTCLOCK) ;
     }
 }
 
@@ -123,6 +127,8 @@ void KW11::ptick() {
 
     if (pcsr & 0100) {
         cpu.interrupt(INTPCLK, 7);
+    } else {
+        cpu.clearIRQ(INTPCLK) ;
     }
 
     // REPEAT?

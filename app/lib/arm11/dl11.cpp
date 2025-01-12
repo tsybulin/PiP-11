@@ -46,8 +46,8 @@ u16 DL11::read16(u32 a) {
 			return xbuf;
 		default:
 			gprintf("Dl11: read from invalid address %06o\n", a);
+			cpu.errorRegister |= 020 ;
 			trap(INTBUS);
-			while(!interrupted) {};
 			return 0 ;
 	}
 }
@@ -64,6 +64,8 @@ void DL11::write16(u32 a, u16 v) {
 			xcsr = ((xcsr & 0200) ^ (v & ~0200));
 			if ((xcsr & 0200) && (xcsr & 0100)) {
 				cpu.interrupt(INTDLT, 4);
+			} else {
+				cpu.clearIRQ(INTDLT) ;
 			}
 		}
 			break;
@@ -74,6 +76,7 @@ void DL11::write16(u32 a, u16 v) {
 			break;
 		default:
 			gprintf("Dl11: write to invalid address %06o\n", a);
+			cpu.errorRegister |= 020 ;
 			trap(INTBUS);
 	}
 }
@@ -88,6 +91,8 @@ void DL11::rpoll() {
 		rcsr |= 0200;
 		if (rcsr & 0100) {
 			cpu.interrupt(INTDLR, 4);
+		} else {
+			cpu.clearIRQ(INTDLR) ;
 		}
 	}
 }
@@ -106,6 +111,8 @@ void DL11::xpoll() {
 	xbuf = 0;
 	if (xcsr & 0100) {
 		cpu.interrupt(INTDLT, 4);
+	} else {
+		cpu.clearIRQ(INTDLT) ;
 	}
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <circle/types.h>
+#include <circle/logger.h>
 
 #include "kt11.h"
 #include "unibus.h"
@@ -67,7 +68,11 @@ class KB11 {
     constexpr inline u16 previousmode() { return ((PSW >> 12) & 3); }
 
     void inline updatePriority() {
+        u8 v = cpuPriority ;
         cpuPriority = (PSW >> 5) & 7 ;
+        if (v != cpuPriority) {
+            irq_dirty = true ;
+        }
     }
 
     constexpr inline bool denabled() {
@@ -95,7 +100,7 @@ class KB11 {
     UNIBUS unibus;
     bool print=false;
     bool wtstate;
-    bool wasRTT = false ;
+    bool wasRTT = false, wasSPL = false ;
     StackTrap stackTrap = STACK_TRAP_NONE ;
 
     inline u16 read16(const u16 va, bool d = false, bool src = true) {
@@ -114,6 +119,10 @@ class KB11 {
                 return pirqr ;
             case 017777770:
                 return microbrreg ;
+            case 017777766: // cpu error register
+                return errorRegister ;
+            case 017777744: // mem error register
+                return 0 ;
             case 017777570:
                 return switchregister;
             default:
@@ -132,12 +141,19 @@ class KB11 {
         return reg > 5 ? reg : PSW & PSW_BIT_REG_SET ? reg + 10 : reg ;
     }
 
+    inline void clearIRQ(const u8 vec) {
+        if (irqs[vec]) {
+            irqs[vec] = 0 ;
+            irq_dirty = true ;
+        }
+    }
+
     u16 PC;               // holds R[7] during instruction execution
     u16 PSW;              // processor status word
     u16 RR[14]; // R0-R7, R10-15
 
     volatile CPUStatus cpuStatus = CPU_STATUS_UNKNOWN ;
-    u16 odtbpt = 0 ;
+    u16 odtbpt = 0, errorRegister ;
     u8 interrupt_vector() ;
   private:
     u16 oldPSW;
@@ -202,7 +218,7 @@ class KB11 {
             return ;
         }
 
-        if (addr < (stacklimit + STACK_LIMIT_RED)) {
+        if ((addr == 0177776) | (addr < (stacklimit + STACK_LIMIT_RED))) {
             stackTrap = STACK_TRAP_RED ;
         } else if (addr < (stacklimit + STACK_LIMIT_YELLOW)) {
             stackTrap = STACK_TRAP_YELLOW ;
@@ -826,14 +842,10 @@ class KB11 {
     void ASHC(const u16 instr);
     void XOR(const u16 instr);
     void SOB(const u16 instr);
-    void FIS(const u16 instr);
     void JMP(const u16 instr);
     void MARK(const u16 instr);
     void MFPI(const u16 instr);
     void MFPD(const u16 instr);
-    void MFPT();
-    void MTPS(const u16 instr);
-    void MFPS(const u16 instr);
     void MTPI(const u16 instr);
     void MTPD(const u16 instr);
     void RTS(const u16 instr);

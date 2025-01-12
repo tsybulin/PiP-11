@@ -87,7 +87,7 @@ void setup(const char *rkfile, const char *rlfile, const bool bBootmon) {
         if (fr1 == FR_OK || fr1 == FR_EXIST) {
             fr1 = f_read(&of, &w, 2, &br) ;
             u16 a = w ;
-            CLogger::Get()->Write("ARM11", LogError, "load %s to %06o", fno.fname, a) ;
+            CLogger::Get()->Write("ARM11", LogError, "load %06o : %s", a, fno.fname) ;
             fr1 = f_read(&of, &w, 2, &br) ;
             while (fr1 == FR_OK && br == 2) {
                 cpu.unibus.write16(a, w) ;
@@ -140,27 +140,6 @@ void loop() {
             }
         }
         
-        u8 ivec = cpu.interrupt_vector() ;
-
-        if (ivec) {
-            cpu.trapat(ivec) ;
-            cpu.wtstate = false;
-            return ; // exit from loop to reset trapbuf
-        }
-
-        cpu.updatePriority() ;
-
-        if (!cpu.wtstate) {
-            cpu.wasRTT = false ;
-            cpu.stackTrap = STACK_TRAP_NONE ;
-
-            cpu.step();
-
-            if (cpu.odtbpt > 0 && cpu.RR[7] == cpu.odtbpt) {
-                cpu.cpuStatus = CPU_STATUS_HALT ;
-            }
-        }
-        
         cpu.unibus.rk11.step() ;
         cpu.unibus.rl11.step() ;
         cpu.unibus.tc11.step() ;
@@ -188,11 +167,38 @@ void loop() {
             cpu.unibus.kw11.ptick() ;
         }
 
+        if (!cpu.wtstate) {
+            cpu.wasRTT = false ;
+            cpu.wasSPL = false ;
+            cpu.stackTrap = STACK_TRAP_NONE ;
+
+            cpu.step();
+
+            if (cpu.odtbpt > 0 && cpu.RR[7] == cpu.odtbpt) {
+                cpu.cpuStatus = CPU_STATUS_HALT ;
+            }
+        }
+
+        if (!cpu.wasSPL) {
+            cpu.updatePriority() ;
+        }
+
         if (cpu.stackTrap == STACK_TRAP_YELLOW) {
-            trap(INTBUS) ;
-        } else if (cpu.stackTrap == STACK_TRAP_RED) {
-            cpu.RR[6] = 4 ;
+            cpu.errorRegister |= 010 ;
             cpu.trapat(INTBUS) ;
+        } else if (cpu.stackTrap == STACK_TRAP_RED) {
+            cpu.errorRegister |= 4 ;
+            cpu.RR[6] = 4 ;
+            trap(INTBUS) ;
+        }
+
+        u8 ivec = cpu.interrupt_vector() ;
+        if (ivec) {
+            cpu.trapat(ivec) ;
+            if (cpu.cpuStatus == CPU_STATUS_STEP) {
+                cpu.cpuStatus = CPU_STATUS_HALT ;
+            }
+            return ; // exit from loop to reset trapbuf
         }
 
         if ((cpu.PSW & PSW_BIT_T) && !cpu.wasRTT) {
@@ -209,7 +215,6 @@ void loop() {
         }
     }
 }
-
 
 TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon) {
     setup(rkfile, rlfile, bootmon);

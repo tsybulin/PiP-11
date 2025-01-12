@@ -51,6 +51,7 @@ u16 KL11::read16(u32 a) {
 		case KL11_XBUF:
 			return xbuf & 0377 ;
 		default:
+			cpu.errorRegister |= 020 ;
 			trap(INTBUS);
 			return 0 ;
 	}
@@ -69,6 +70,8 @@ void KL11::write16(u32 a, u16 v) {
 			xcsr = ((xcsr & 0200) ^ (v & ~0200));
 			if ((xcsr & 0200) && (xcsr & 0100)) {
 				cpu.interrupt(INTTTYOUT, 4);
+			} else {
+				cpu.clearIRQ(INTTTYOUT) ;
 			}
 			break;
 
@@ -79,7 +82,8 @@ void KL11::write16(u32 a, u16 v) {
 
 		default:
 			gprintf("kl11: write to invalid address %06o\n", a);
-			while(!interrupted);
+			cpu.errorRegister |= 020 ;
+			trap(INTBUS);
 	}
 }
 
@@ -109,6 +113,8 @@ void KL11::rpoll() {
 		rcsr |= 0200;
 		if (rcsr & 0100) {
 			cpu.interrupt(INTTTYIN, 4);
+		} else {
+			cpu.clearIRQ(INTTTYIN) ;
 		}
 	}
 
@@ -130,6 +136,9 @@ void KL11::xpoll() {
 		lx = t ;
 	} else {
 		if (t - lx < 315lu) {
+			if (!(xcsr & 0100)) {
+				cpu.clearIRQ(INTTTYOUT) ;
+			}
 			return ;
 		}
 
@@ -171,5 +180,7 @@ void KL11::xpoll() {
 	
 	if (xcsr & 0100) {
 		cpu.interrupt(INTTTYOUT, 4);
+	} else {
+		cpu.clearIRQ(INTTTYOUT) ;
 	}
 }

@@ -52,6 +52,8 @@ void LP11::write16(u32 a, u16 v) {
                 u16 lps = lp11_i2c_read(LP11_I2C_LPS) ;
                 if ((lps & 0100) && (lps & 0100200)) {
                     cpu.interrupt(INTLP, 4);
+                } else {
+                    cpu.clearIRQ(INTLP) ;
                 }
             }
             break;

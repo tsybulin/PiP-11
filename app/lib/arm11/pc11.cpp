@@ -68,6 +68,8 @@ void PC11::write16(const u32 a, const u16 v) {
                 u16 pps = pc11_i2c_read(PC11_I2C_PPS) ;
                 if ((pps & 0100) && (pps & 0100200)) {
                     cpu.interrupt(INTPTP, 5) ;
+                } else {
+                    cpu.clearIRQ(INTPTP) ;
                 }
             }
             break ;
@@ -104,6 +106,8 @@ void PC11::step() {
             ptrcheck = false ;
             if (prs & 0100) {
                 cpu.interrupt(INTPTR, 4) ;
+            } else {
+                cpu.clearIRQ(INTPTR) ;
             }
         }
     }
@@ -116,6 +120,8 @@ void PC11::step() {
 
             if (pps & 0100) {
                 cpu.interrupt(INTPTP, 4) ;
+            } else {
+                cpu.clearIRQ(INTPTP) ;
             }
         }
     }

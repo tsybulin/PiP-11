@@ -25,7 +25,7 @@ enum INTVEC : u8 {
     INTFPP    = 0244,
     INTFAULT  = 0250,
     INTDLR    = 0300,
-    INTDLT    = 0304,
+    INTDLT    = 0304
 };
 
 void trap(u8 num);

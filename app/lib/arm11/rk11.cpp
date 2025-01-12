@@ -33,6 +33,7 @@ u16 RK11::read16(const u32 a) {
             return rkda;
         default:
             //printf("rk11::read16 invalid read %06o\n", a);
+			cpu.errorRegister |= 020 ;
             trap(INTBUS);
         }
     return 0;
@@ -81,8 +82,11 @@ void RK11::step() {
             seek();
             rkcs &= ~0x2000; // Clear search complete - reset by rk11_seekEnd
             rkcs |= 0x80;    // set done - ready to accept new command
-            if (rkcs & (1 << 6))
+            if (rkcs & (1 << 6)) {
                 cpu.interrupt(INTRK, 5);
+            } else {
+                cpu.clearIRQ(INTRK) ;
+            }
             break;
         case 5: // Read Check
             break;
@@ -99,6 +103,8 @@ void RK11::readwrite() {
         rkready();
         if (rkcs & (1 << 6)) {
             cpu.interrupt(INTRK, 5) ;
+        } else {
+            cpu.clearIRQ(INTRK) ;
         }
         return;
     }
@@ -190,6 +196,8 @@ void RK11::write16(const u32 a, const u16 v) {
             break;
         default:
             gprintf("rk11::write16 invalid write %06o: %06o\n", a, v);
+			cpu.errorRegister |= 020 ;
+            trap(INTBUS) ;
     }
 }
 

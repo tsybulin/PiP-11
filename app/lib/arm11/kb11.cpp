@@ -36,6 +36,7 @@ void KB11::reset(u16 start) {
     mmu.reset() ;
     unibus.reset(false);
     wtstate = false;
+    errorRegister = 0 ;
 }
 
 void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
@@ -71,8 +72,6 @@ void KB11::writeA(const u32 a, const u16 v) {
                 }
 
                 pirqr |= pia ;
-                irqs[INTPIR] = 0 ;
-                irq_dirty = true ;
             }
 
             break ;
@@ -84,6 +83,11 @@ void KB11::writeA(const u32 a, const u16 v) {
             break;
         case 017777770:
             microbrreg = v ;
+            break ;
+        case 017777766: // cpu error register
+            errorRegister = v ;
+            break;
+        case 017777744: // mem error register
             break ;
         case 017777570:
             displayregister = v;
@@ -138,54 +142,88 @@ void KB11::SUB(const u16 instr) {
     datapath = uval ;
 }
 
+#define GET_SIGN_W(v) (((v) >> 15) & 1)
+
 // MUL 070RSS
 void KB11::MUL(const u16 instr) {
 	const auto reg = REG((instr >> 6) & 7);
-	s32 val1 = RR[reg];
-	if (val1 & 0x8000) {
-		val1 = -((0xFFFF ^ val1) + 1);
-	}
-
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-	s32 val2 = read<2>(op.operand, dpage, false);
-	if (val2 & 0x8000) {
-		val2 = -((0xFFFF ^ val2) + 1);
-	}
-	s32 sval = val1 * val2;
-	RR[reg] = sval >> 16;
-	RR[reg | 1] = sval & 0xFFFF;
+	s32 src2 = read<2>(op.operand, dpage, false) ;
+	s32 src = RR[reg] ;
+    if (GET_SIGN_W(src2)) {
+        src2 = src2 | ~077777 ;
+    }
+    if (GET_SIGN_W(src)) {
+        src = src | ~077777 ;
+    }
+
+	s32 dst = src * src2 ;
+    // CLogger::Get()->Write("MUL", LogError, "%i * %i = %i", val1, val2, sval) ;
+    RR[reg] = (dst >> 16) & 0177777 ;
+	RR[reg | 1] = dst & 0177777 ;
 	PSW &= PSW_MASK_COND ;
-    setPSWbit(PSW_BIT_N, sval < 0) ;
-    setPSWbit(PSW_BIT_Z, sval == 0) ;
-    setPSWbit(PSW_BIT_C, (sval > 077777) || (sval < -0100000)) ;
+    setPSWbit(PSW_BIT_N, dst < 0) ;
+    setPSWbit(PSW_BIT_Z, dst == 0) ;
+    setPSWbit(PSW_BIT_C, ((dst > 077777) || (dst < -0100000))) ;
 }
 
 void KB11::DIV(const u16 instr) {
 	const auto reg = REG((instr >> 6) & 7);
-	const s32 val1 = (RR[reg] << 16) | (RR[reg | 1]);
+	s32 src = (((u32)RR[reg] << 16)) | (RR[reg | 1]);
     Operand op = DA<2>(instr) ;
     const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-	s32 val2 = read<2>(op.operand, dpage, false);
-	PSW &= 0xFFF0;
-	if (val2 > 32767)
-		val2 |= 0xffff0000;
-	if (val2 == 0) {
-		PSW |= PSW_BIT_C | PSW_BIT_V;
-		return;
-	}
-	if ((val1 / val2) >= 0x10000) {
-		PSW |= PSW_BIT_V;
-		return;
-	}
-	RR[reg] = (val1 / val2) & 0xFFFF;
-	RR[reg | 1] = (val1 % val2) & 0xFFFF;
-	if (RR[reg] == 0) {
-		PSW |= PSW_BIT_Z;
-	}
-	if (RR[reg] & 0100000) {
-		PSW |= PSW_BIT_N;
-	}
+	s32 src2 = read<2>(op.operand, dpage, false) ;
+
+    // CLogger::Get()->Write("DIV", LogError, "%i / %i", src, src2) ;
+
+    if (src2 == 0) {
+        PSW &= PSW_MASK_COND ;
+		PSW |= PSW_BIT_C | PSW_BIT_V | PSW_BIT_Z ;
+        // CLogger::Get()->Write("DIV", LogError, "%d : /SS=0, PSW %06o", __LINE__, PSW) ;
+        return ;
+    }
+
+    if ((((u32)src) == 020000000000) && (src2 == 0177777)) {
+        PSW &= PSW_MASK_COND ;
+		PSW |= PSW_BIT_V ;
+        // CLogger::Get()->Write("DIV", LogError, "%d : PSW %06o", __LINE__, PSW) ;
+        return ;
+    }
+
+    if (GET_SIGN_W(src2)) {
+        src2 = src2 | ~077777 ;
+    }
+
+    if (GET_SIGN_W(RR[reg])) {
+        src = src | ~017777777777 ;
+    }
+
+    s32 dst = src / src2 ;
+    // CLogger::Get()->Write("DIV", LogError, "%i / %i = %i", src, src2, dst) ;
+
+    setPSWbit(PSW_BIT_N, dst < 0) ;
+    // CLogger::Get()->Write("DIV", LogError, "%d : PSW %06o", __LINE__, PSW) ;
+
+    if (dst > 077777) {
+        setPSWbit(PSW_BIT_V, true) ;
+        setPSWbit(PSW_BIT_C | PSW_BIT_Z, false) ;
+        return ;
+    }
+
+    if (dst < -0100000) {
+        setPSWbit(PSW_BIT_V | PSW_BIT_N, true) ;
+        setPSWbit(PSW_BIT_C, false) ;
+        return ;
+    }
+
+    RR[reg] = dst & 0177777 ;
+    RR[reg | 1] = (src - (src2 * dst)) & 0177777 ;
+    PSW &= ~(PSW_BIT_Z | PSW_BIT_C | PSW_BIT_V) ;
+    if (dst == 0) {
+        PSW |= PSW_BIT_Z ;
+    }
+    // CLogger::Get()->Write("DIV", LogError, "%d : PSW %06o", __LINE__, PSW) ;
 }
 
 void KB11::ASH(const u16 instr) {
@@ -285,77 +323,6 @@ void KB11::SOB(const u16 instr) {
     }
 }
 
-void KB11::FIS(const u16 instr)
-{
-    union fltint {
-        u32 xint;
-        float xflt;
-    };
-    // u32 arg1, arg2;
-    fltint bfr;
-    u16 adr = RR[REG(instr & 7)];      // Base address from specfied reg
-    float op1, op2;
-
-    bfr.xint = read<2>(adr + 6) | (read<2>(adr + 4) << 16);
-    op1 = bfr.xflt;
-    bfr.xint = read<2>(adr + 2) | (read<2>(adr) << 16);
-    op2 = bfr.xflt;
-    PSW &= ~(PSW_BIT_N | PSW_BIT_V | PSW_BIT_Z | PSW_BIT_C);
-    switch (instr & 070) {
-    case 0:                 // FADD
-        bfr.xflt = op1 + op2;
-        break;
-    case 010:
-        bfr.xflt = op1 - op2;
-        break;
-    case 020:
-        bfr.xflt = (op1 * op2) / 4.0f;
-        break;
-    case 030:
-        if (op2 == 0.0) {
-            PSW |= (PSW_BIT_N | PSW_BIT_V | PSW_BIT_C);
-            trap(INTFIS);
-        }
-        bfr.xflt = (op1 / op2) * 4.0f;
-        break;
-    }
-    RR[REG(instr & 7)] += 4;
-    if (bfr.xflt == 0.0)
-        PSW |= PSW_BIT_Z;
-    if (bfr.xflt < 0.0)
-        PSW |= PSW_BIT_N;
-    write<2>(adr + 4, bfr.xint >> 16);
-    write<2>(adr + 6, bfr.xint);
-}
-
-
-// MTPS
-
-void KB11::MTPS(const u16 instr) {
-    Operand op = DA<1>(instr, false) ;
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-    auto src = read<1>(op.operand, dpage, false);
-    PSW = (PSW & 0177400) | (src & 0357);
-}
-
-// MFPS
-
-void KB11::MFPS(const u16 instr) {
-    Operand op = DA<1>(instr) ;
-    if (stackTrap == STACK_TRAP_RED) {
-        return ;
-    }
-    const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
-    auto dst = PSW & 0357;
-    if (PSW & msb<1>() && ((instr & 030) == 0)) {
-        dst |= 0177400;
-        write<2>(op.operand, dst, dpage) ;
-    } else{
-        write<1>(op.operand, dst, dpage) ;
-    }
-    setNZ<1>(PSW & 0377);
-}
-
 // JSR 004RDD
 void KB11::JSR(const u16 instr) {
     if (((instr >> 3) & 7) == 0) {
@@ -365,6 +332,12 @@ void KB11::JSR(const u16 instr) {
     if (stackTrap == STACK_TRAP_RED) {
         return ;
     }
+
+    checkStackLimit(RR[6]) ;
+    if (stackTrap == STACK_TRAP_RED) {
+        return ;
+    }
+
     const auto reg = REG((instr >> 6) & 7);
     push(RR[reg]);
     RR[reg] = RR[7];
@@ -374,7 +347,6 @@ void KB11::JSR(const u16 instr) {
 // JMP 0001DD
 void KB11::JMP(const u16 instr) {
     if (((instr >> 3) & 7) == 0) {
-        // Registers don't have a virtual address so trap!
         trap(INTINVAL);
     } else {
         RR[7] = DA<2>(instr, false).operand ;
@@ -397,7 +369,7 @@ void KB11::MFPI(const u16 instr) {
     }
 
     u16 uval;
-    if (!(instr & 0x38)) {
+    if (!(instr & 070)) {
         const auto reg = REG(instr & 7);
         if (reg == 6 && currentmode() != previousmode()) {
             uval = stackpointer[previousmode()];
@@ -419,7 +391,7 @@ void KB11::MFPI(const u16 instr) {
 // MFPD 1065SS
 void KB11::MFPD(const u16 instr) {
     u16 uval;
-    if (!(instr & 0x38)) {
+    if (!(instr & 070)) {
         const auto reg = REG(instr & 7);
         if (reg == 6 && currentmode() != previousmode()) {
             uval = stackpointer[previousmode()];
@@ -486,11 +458,6 @@ void KB11::RTS(const u16 instr) {
     RR[reg] = pop();
 }
 
-// MFPT 000007
-void KB11::MFPT() {
-    trap(INTINVAL); // not a PDP11/44
-}
-
 // RTI 000004
 void KB11::RTI() {
     RR[7] = pop() ;
@@ -525,8 +492,10 @@ void KB11::WAIT() {
     if (currentmode() == 3) {
         return ;
     }
+
     datapath = RR[REG(0)] ;
     wtstate = true;
+    wasRTT = false ;
 }
 
 void KB11::RESET() {
@@ -539,8 +508,9 @@ void KB11::RESET() {
     stacklimit = 0 ;
     unibus.reset();
     mmu.reset() ;
-    PSW = PSW & PSW_BIT_PRIORITY ;
+    // PSW = PSW & PSW_BIT_PRIORITY ;
     wtstate = false ;
+    errorRegister = 0 ;
 }
 
 // SWAB 0003DD
@@ -601,6 +571,7 @@ void KB11::step() {
                             switch (instr) {
                                 case 0: // HALT 000000
                                     if (currentmode()) {
+                            			errorRegister |= 0200 ;
                                         trap(INTBUS);
                                     }
                                     // Console::get()->printf(" HALT:\r\n");
@@ -627,11 +598,9 @@ void KB11::step() {
                                     RTT();
                                     return;
                                 case 7: // MFPT
-                                    MFPT();
+                                    trap(INTINVAL);
                                     return;
                                 default: // We don't know this 0000xx instruction
-                                    gprintf("unknown 0000xx instruction\n");
-                                    printstate();
                                     trap(INTINVAL);
                                     return;
                             }
@@ -648,6 +617,7 @@ void KB11::step() {
                                         return ;
                                     }
                                     PSW = ((PSW & 0177037) | ((instr & 7) << 5));
+                                    wasSPL = true ;
                                     return;
                                 case 4: // CLR CC 00024C Part 1 without N
                                 case 5: // CLR CC 00025C Part 2 with N
@@ -658,8 +628,6 @@ void KB11::step() {
                                     PSW = (PSW | (instr & 017));
                                     return;
                                 default: // We don't know this 00002xR instruction
-                                    gprintf("unknown 0002xR instruction\n");
-                                    printstate();
                                     trap(INTINVAL);
                                     return;
                             }
@@ -667,9 +635,7 @@ void KB11::step() {
                             SWAB(instr);
                             return;
                         default:
-                            gprintf("unknown 000xDD instruction\n");
-                            printstate();
-                            trapat(INTINVAL);
+                            trap(INTINVAL);
                             return;
                     }
                 case 1: // BR 0004 offset
@@ -760,9 +726,7 @@ void KB11::step() {
                             SXT(instr);
                             return;
                         default: // We don't know this 0o00xxDD instruction
-                            gprintf("unknown 00xxDD instruction\n");
-                            printstate();
-                            trapat(INTINVAL);
+                            trap(INTINVAL);
                             return;
                     }
                 }
@@ -801,19 +765,11 @@ void KB11::step() {
                 case 4: // XOR 074RSS
                     XOR(instr);
                     return;
-                case 5: // FIS
-                    FIS(instr);
-                    return;
-                case 6:
-                    //printf("Invalid instruction:%06o\r\n",instr);
-                    trap(INTINVAL);
                 case 7: // SOB 077Rnn
                     SOB(instr);
                     return;
                 default: // We don't know this 07xRSS instruction
-                    gprintf("unknown 07xRSS instruction\n");
-                    printstate();
-                    trapat(INTINVAL);
+                    trap(INTINVAL);
                     return;
             }
         case 8:                           // 10xxxx instructions
@@ -858,7 +814,7 @@ void KB11::step() {
                         branch(instr);
                     }
                     return;
-                case 8:          // EMT 1040 operand
+                case 8:          // EMT 104xxx operand
                     trap(INTEMT); // Trap 30 - EMT instruction
                 case 9:          // TRAP 1044 operand
                     trap(INTTRAP); // Trap 34 - TRAP instruction
@@ -900,12 +856,6 @@ void KB11::step() {
                         case 063: // ASLB 1063DD
                             ASL<1>(instr);
                             return;
-                        case 064: // MTPS 1064SS
-                            MTPS(instr);
-                            return;
-                        case 067: // MFPS 106700
-                            MFPS(instr);
-                            return;
                         case 065: // MFPD 1065DD
                             MFPD(instr);
                             return;
@@ -914,9 +864,7 @@ void KB11::step() {
                             return;
                         // case 0o67: // MTFS 1064SS
                         default: // We don't know this 0o10xxDD instruction
-                            gprintf("unknown 0o10xxDD instruction\n");
-                            printstate();
-                            trapat(INTINVAL);
+                            trap(INTINVAL);
                             return;
                     }
             }
@@ -944,6 +892,7 @@ void KB11::step() {
             [[fallthrough]];
         default: // 15  17xxxx FPP instructions
             trap(INTINVAL);
+            return ;
     }
 }
 
@@ -961,22 +910,23 @@ void KB11::calc_irqs() {
             pri = irqs[i] ;
         }
     }
-
-    irq_dirty = false ;
 }
 
 u8 KB11::interrupt_vector() {
     if (irq_dirty) {
         calc_irqs() ;
+        irq_dirty = false ;
     }
 
     if (!irq_vec) {
         return 0 ;
     }
 
-    if (irqs[irq_vec] > cpuPriority) {
-        u8 v = irq_vec ;
+    u8 v = irq_vec ;
+
+    if (irqs[v] > cpuPriority) {
         irqs[v] = 0 ;
+        irq_vec = 0 ;
         irq_dirty = true ;
         return v ;
     }
@@ -990,15 +940,8 @@ void KB11::interrupt(const u8 vec, const u8 pri) {
         while(!interrupted);
     }
 
-    if (irqs[vec] >= pri) {
-        wtstate = false;
-        return ;
-    }
-
     irqs[vec] = pri ;
     irq_dirty = true ;
-
-    wtstate = false;
 }
 
 void KB11::trapat(u8 vec) {
@@ -1008,14 +951,20 @@ void KB11::trapat(u8 vec) {
     }
 
     u16 PC = RR[7] ;
-
     u16 opsw = PSW;
+    
+    if (RR[6] & 1) {
+        vec = INTBUS ;
+    }
+
     auto npsw = unibus.read16(mmu.decode<false>(vec, 0, mmu.SR[3] & 4, true) + 2);
     writePSW((npsw & ~PSW_BIT_PRIV_MODE) | (currentmode() << 12), true);
     RR[7] = unibus.read16(mmu.decode<false>(vec, 0, mmu.SR[3] & 4, true));       // Get from K-apace
-    RR[6] -= 4 ;
-    write16(RR[6]+2, opsw, mmu.SR[3] & 4) ;
-    write16(RR[6],   PC,   mmu.SR[3] & 4) ;
+    if ((RR[6] & 1) == 0) {
+        RR[6] -= 4 ;
+        write16(RR[6]+2, opsw, mmu.SR[3] & 4) ;
+        write16(RR[6],   PC,   mmu.SR[3] & 4) ;
+    }
     wtstate = false;
 
     if (cpuStatus != CPU_STATUS_ENABLE) {
@@ -1050,6 +999,7 @@ void KB11::ptstate() {
 
 void KB11::pirq() {
     if (pirqr == 0) {
+        clearIRQ(INTPIR) ;
         return ;
     }
 

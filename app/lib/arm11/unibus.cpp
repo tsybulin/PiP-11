@@ -31,7 +31,7 @@ void UNIBUS::ub_write16(const u32 a, const u16 v) {
 
 void UNIBUS::write16(const u32 a, const u16 v) {
     if  (a & 1) {
-        //printf("unibus: write16 to odd address %06o\n", a);
+        cpu.errorRegister |= 0100 ;
         trap(INTBUS);
     }
 
@@ -66,7 +66,9 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         case 017777774:
         case 017777772:
         case 017777770:
+        case 017777766: // cpu error register
         case 017777570:
+        case 017777744: // mem error register
             cpu.writeA(a, v) ;
             return ;
 
@@ -96,6 +98,7 @@ void UNIBUS::write16(const u32 a, const u16 v) {
                     dl11.write16(a, v);
                     return;
                 }
+			cpu.errorRegister |= 020 ;
             trap(INTBUS);
         case 017777500:
             switch (a) {
@@ -141,12 +144,14 @@ void UNIBUS::write16(const u32 a, const u16 v) {
                     cpu.mmu.SR[3] = v & 067 ;
                     return ;
                 default:
+        			cpu.errorRegister |= 020 ;
                     trap(INTBUS);
             }
         case 017777700:
             cpu.write16(a, v) ;
         default:
-            CLogger::Get()->Write("UNIBUS", LogError, "write16 non-existent address %08o : %06o", a, v) ;
+            // CLogger::Get()->Write("UNIBUS", LogError, "write16 non-existent address %08o : %06o", a, v) ;
+			cpu.errorRegister |= 020 ;
             trap(INTBUS);
     }
     return;
@@ -166,6 +171,7 @@ u16 UNIBUS::ub_read16(const u32 a) {
 u16 UNIBUS::read16(const u32 a) {
     if (a & 1) {
         //printf("unibus: read16 from odd address %06o\n", a);
+        cpu.errorRegister |= 0100 ;
         trap(INTBUS);
     }
 
@@ -197,7 +203,9 @@ u16 UNIBUS::read16(const u32 a) {
         case 017777774:
         case 017777772:
         case 017777770:
+        case 017777766: // cpu error register
         case 017777570:
+        case 017777744: // mem error register
             return cpu.readA(a);
 
         case 017777764:
@@ -226,6 +234,7 @@ u16 UNIBUS::read16(const u32 a) {
                 case DL11_CSR:
                     return dl11.read16(a);
             }
+			cpu.errorRegister |= 020 ;
             trap(INTBUS);
         case 017777500:
             switch (a) {
@@ -261,10 +270,12 @@ u16 UNIBUS::read16(const u32 a) {
                 case 017772516:
                     return cpu.mmu.SR[3] & 067 ;
                 default:
+        			cpu.errorRegister |= 020 ;
                     trap(INTBUS);
             }
         default:
-            CLogger::Get()->Write("UNIBUS", LogError, "read16  non-existent address %08o", a) ;
+            // CLogger::Get()->Write("UNIBUS", LogError, "read16  non-existent address %08o", a) ;
+			cpu.errorRegister |= 020 ;
             trap(INTBUS);
     }
     return 0;

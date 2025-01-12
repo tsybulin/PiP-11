@@ -1,8 +1,9 @@
 #include "kt11.h"
 
 #include <circle/logger.h>
+#include "kb11.h"
 
-extern volatile bool interrupted ;
+extern KB11 cpu ;
 
 KT11::KT11() {
     for (int i = 0; i < 64; i++) {
@@ -83,8 +84,8 @@ u16 KT11::read16(const u32 a) {
             return pages[03][d].par;
         default:
             CLogger::Get()->Write("KT11", LogError, "read16 from invalid address %08o", a) ;
-            trap(INTBUS); // intbus
-            while(!interrupted) {} ;
+			cpu.errorRegister |= 020 ;
+			trap(INTBUS);
             return 0 ;
     }
 }
@@ -144,6 +145,7 @@ void KT11::write16(const u32 a, const u16 v) {
             break;
         default:
             CLogger::Get()->Write("KT11", LogError, "write16 to invalid address %08o", a) ;
+			cpu.errorRegister |= 020 ;
             trap(INTBUS); // intbus
     }
 }

@@ -2,6 +2,9 @@
 
 #include <circle/logger.h>
 #include "arm11.h"
+#include "kb11.h"
+
+extern KB11 cpu ;
 
 VT11::VT11() :
     dpc(0),
@@ -32,6 +35,7 @@ u16 VT11::read16(u32 a) {
         
         default:
             CLogger::Get()->Write("VT11", LogError, "read16 non-existent address %08o", a) ;
+			cpu.errorRegister |= 020 ;
             trap(INTBUS);
     }
 
@@ -62,6 +66,7 @@ void VT11::write16(u32 a, u16 v) {
         
         default:
             CLogger::Get()->Write("VT11", LogError, "write16 non-existent address %08o : %06o", a, v) ;
-            trap(INTBUS);
+			cpu.errorRegister |= 020 ;
+            trap(INTBUS) ;
     }
 }
