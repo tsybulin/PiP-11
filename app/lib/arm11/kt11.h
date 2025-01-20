@@ -3,6 +3,7 @@
 #include "arm11.h"
 
 #include <cons/cons.h>
+#include <circle/logger.h>
 #include "xx11.h"
 
 class KT11 : public XX11 {
@@ -155,7 +156,11 @@ class KT11 : public XX11 {
 
             // The 124K of addresses from 17 000 000 - 17 757 777 may be used to access memory via the Unibus Map
             if (aa > 016777777U && aa < 017760000U) {
+                // u32 a22 = aa ;
                 aa = ub_decode(aa & 0777777) ;
+                // if (is_debug()) {
+                //     CLogger::Get()->Write("KT11", LogError, "22-unb %06o -> %08o -> %08o", a, a22, aa) ;
+                // }
             }
 
             return aa ;
@@ -190,9 +195,13 @@ class KT11 : public XX11 {
                 return a ;
             }
 
-            u8 nr = (a & 0760000) >> 13 ;
+            u8 nr = (a & 0760000) >> 12 ;
 
-            u32 aa = (a & 017776) + ((u32)UBMR[nr] | ((u32)UBMR[nr+1] & 077) << 16) ;
+            u32 aa = (a & 017776) + ((((u32)UBMR[nr | 1] & 077) << 16) | ((u32)UBMR[nr] & 0177776)) ;
+
+            // if (is_debug()) {
+            //     CLogger::Get()->Write("KT11", LogError, "ub_decode %06o -> %d -> %08o", a, nr, aa) ;
+            // }
 
             return aa ;
         }
@@ -223,5 +232,6 @@ class KT11 : public XX11 {
 
     private:
         bool is_internal(const u32 a) ;
+        bool is_debug() ;
         u16 UBMR[64] ;
 }; 

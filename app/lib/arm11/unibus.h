@@ -11,7 +11,7 @@
 #include "xx11.h"
 
 const u32 MEMSIZE = //004000000 ; // 1024K
-                  017760000 ; // 4088K
+                  017000000 ; // 3840K
 
 class UNIBUS : public XX11 {
     public:

@@ -1,6 +1,5 @@
 #include "kt11.h"
 
-#include <circle/logger.h>
 #include "kb11.h"
 
 extern KB11 cpu ;
@@ -45,6 +44,10 @@ bool KT11::is_internal(const u32 a) {
     }
 
     return false ;
+}
+
+bool KT11::is_debug() {
+    return cpu.cpuStatus != CPU_STATUS_ENABLE ;
 }
 
 u16 KT11::read16(const u32 a) {
