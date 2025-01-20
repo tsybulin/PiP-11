@@ -2,15 +2,16 @@
 
 #include <circle/types.h>
 #include <fatfs/ff.h>
+#include "xx11.h"
 
 #define RK11_CSR 017777400
 
-class RK11 {
+class RK11 : public XX11 {
 
   public:
 	  FIL crtds[8];
-    u16 read16(u32 a);
-    void write16(u32 a, u16 v);
+    virtual u16 read16(const u32 a);
+    virtual void write16(const u32 a, const u16 v);
     void reset();
     void step();
 	  FRESULT fr;

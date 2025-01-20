@@ -217,6 +217,8 @@ void loop() {
 }
 
 TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon) {
+    cpu.unibus.init() ;
+    
     setup(rkfile, rlfile, bootmon);
 
     while (!interrupted) {

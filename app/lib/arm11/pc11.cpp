@@ -37,7 +37,7 @@ static void pc11_i2c_write(const u8 addr, const u16 v) {
     }
 }
 
-u16 PC11::read16(u32 a) {
+u16 PC11::read16(const u32 a) {
     switch (a) {
         case PC11_PRS:
             return pc11_i2c_read(PC11_I2C_PRS) ;

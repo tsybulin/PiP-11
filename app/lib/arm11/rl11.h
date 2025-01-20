@@ -36,19 +36,27 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <circle/types.h>
 #include <fatfs/ff.h>
+#include "xx11.h"
 
 #define RL11_CSR 017774400
+enum {
+    DEV_RL_BAE = 017774420,  // RL11 Bus Address Extension Register
+    DEV_RL_MP  = 017774406,  // RL11 Multipurpose Register
+    DEV_RL_DA  = 017774404,  // RL11 Disk Address
+    DEV_RL_BA  = 017774402,  // RL11 Bus Address
+    DEV_RL_CS  = RL11_CSR,   // RL11 Control Status
+} ;
 
-class RL11 {
+class RL11 : public XX11 {
 
 public:
-FIL disks[4];
-void write16(u32 a, u16 v);
-u16 read16(u32 a);
-void reset();
-void step();
-void rlnotready();
-void rlready();
+   FIL disks[4];
+   virtual void write16(const u32 a, const u16 v);
+   virtual u16 read16(const u32 a);
+   void reset();
+   void step();
+   void rlnotready();
+   void rlready();
 
 private:
     u16 drun, dtype;

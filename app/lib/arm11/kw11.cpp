@@ -9,7 +9,7 @@ extern KB11 cpu;
 KW11::KW11() {
 }
 
-void KW11::write16(u32 a, u16 v) {
+void KW11::write16(const u32 a, const u16 v) {
     switch (a) {
         case KW11_CSR:
             csr = v;
@@ -33,7 +33,7 @@ void KW11::write16(u32 a, u16 v) {
     }
 }
 
-u16 KW11::read16(u32 a) {
+u16 KW11::read16(const u32 a) {
     switch (a) {
         case KW11_CSR:
             return csr;

@@ -92,18 +92,18 @@ void disasmaddr(u16 m, u16 a) {
         switch (m) {
             case 027:
                 a += 2;
-                Console::get()->printf("#%06o", cpu.read16(a));
+                Console::get()->printf("#%06o", cpu.readW(a));
                 return;
             case 037:
                 a += 2;
-                Console::get()->printf("@#%06o", cpu.read16(a));
+                Console::get()->printf("@#%06o", cpu.readW(a));
                 return;
             case 067:
                 a += 2;
-                Console::get()->printf("%06o", (a + 2 + (cpu.read16(a))) & 0xFFFF);
+                Console::get()->printf("%06o", (a + 2 + (cpu.readW(a))) & 0xFFFF);
                 return;
             case 077:
-                Console::get()->printf("@%06o", (a + 2 + (cpu.read16(a))) & 0xFFFF);
+                Console::get()->printf("@%06o", (a + 2 + (cpu.readW(a))) & 0xFFFF);
                 return;
         }
     }
@@ -129,17 +129,17 @@ void disasmaddr(u16 m, u16 a) {
             break;
         case 060:
             a += 2;
-            Console::get()->printf("%06o(%s)", cpu.read16(a), rs[m & 7]);
+            Console::get()->printf("%06o(%s)", cpu.readW(a), rs[m & 7]);
             break;
         case 070:
             a += 2;
-            Console::get()->printf("@%06o(%s)", cpu.read16(a), rs[m & 7]);
+            Console::get()->printf("@%06o(%s)", cpu.readW(a), rs[m & 7]);
             break;
     }
 }
 
 void disasm(u16 a) {
-    const auto ins = cpu.read16(a);
+    const auto ins = cpu.readW(a);
 
     D l = {0, 0, "", 0, false};
     for (auto i = 0; disamtable[i].ins; i++) {

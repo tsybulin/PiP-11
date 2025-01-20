@@ -1,9 +1,11 @@
 #pragma once
+
 #include <circle/types.h>
+#include "xx11.h"
 
 #define DL11_CSR 017776500
 
-class DL11 {
+class DL11 : public XX11 {
 
     public:
         DL11();
@@ -11,9 +13,8 @@ class DL11 {
         void clearterminal();
         void xpoll();
         void rpoll();
-        u16 read16(u32 a);
-        void write16(u32 a, u16 v);
-
+        virtual u16 read16(const u32 a);
+        virtual void write16(const u32 a, const u16 v);
 
     private:
         u16 rcsr;

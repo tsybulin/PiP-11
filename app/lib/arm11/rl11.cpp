@@ -77,15 +77,6 @@ enum {
     RLCERR = (1 << 15)
 } ;
 
-enum {
-    DEV_RL_BAE = 017774420,  // RL11 Bus Address Extension Register
-    DEV_RL_MP  = 017774406,  // RL11 Multipurpose Register
-    DEV_RL_DA  = 017774404,  // RL11 Disk Address
-    DEV_RL_BA  = 017774402,  // RL11 Bus Address
-    DEV_RL_CS  = RL11_CSR,   // RL11 Control Status
-};
-
-
 u16 RL11::read16(u32 a) {
     switch (a) {
         case DEV_RL_CS:  // Control Status (OR in the bus extension)
@@ -190,7 +181,7 @@ retry:
     drun = 0;
 }
 
-void RL11::write16(u32 a, u16 v) {
+void RL11::write16(const u32 a, const u16 v) {
     switch (a) {
     case DEV_RL_CS:  // Control Status
         RLBA = (RLBA & 0xFFFF) | ((v & 060) << 12);

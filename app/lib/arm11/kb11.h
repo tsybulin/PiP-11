@@ -5,6 +5,7 @@
 
 #include "kt11.h"
 #include "unibus.h"
+#include "xx11.h"
 
 #define PSW_BIT_C             001
 #define PSW_BIT_V             002
@@ -42,7 +43,7 @@ enum StackTrap : u8 {
 class API ;
 class ODT ;
 
-class KB11 {
+class KB11 : public XX11 {
     friend API ;
     friend ODT ;
     friend UNIBUS ;
@@ -103,45 +104,10 @@ class KB11 {
     bool wasRTT = false, wasSPL = false ;
     StackTrap stackTrap = STACK_TRAP_NONE ;
 
-    inline u16 read16(const u16 va, bool d = false, bool src = true) {
-        const auto a = mmu.decode<false>(va, currentmode(), d, src);
-        return readA(a) ;
-    }
-
-    inline u16 readA(const u32 a) {
-        ldat = a ;
-        switch (a) {
-            case 017777776:
-                return PSW;
-            case 017777774:
-                return stacklimit;
-            case 017777772:
-                return pirqr ;
-            case 017777770:
-                return microbrreg ;
-            case 017777766: // cpu error register
-                return errorRegister ;
-            case 017777570:
-                return switchregister;
-            case 017777740:
-                return lowErrorAddressRegister ;
-            case 017777742:
-                return highErrorAddressRegister ;
-            case 017777744:
-                return memorySystemErrorRegister ;
-            case 017777746:
-                return memoryControlRegister ;
-            case 017777750:
-                return memoryMaintenanceRegister ;
-            case 017777752:
-                return hitMissRegister ;
-            default:
-                return unibus.read16(a);
-        }
-    }
-
-    void write16(const u16 va, const u16 v, bool d = false, bool src = false);
-    void writeA(const u32 a, const u16 v) ;
+    u16 readW(const u16 va, bool d = false, bool src = true) ;
+    virtual u16 read16(const u32 a) ;
+    void writeW(const u16 va, const u16 v, bool d = false, bool src = false);
+    virtual void write16(const u32 a, const u16 v) ;
     
     inline u8 REG(const u8 reg) {
         return reg > 5 ? reg : PSW & PSW_BIT_REG_SET ? reg + 8 : reg ;
@@ -198,18 +164,18 @@ class KB11 {
     }
     
     inline u16 fetch16() {
-        const auto val = read16(RR[7]);
+        const auto val = readW(RR[7]);
         RR[7] += 2;
         return val;
     }
 
     inline void push(const u16 v) {
         RR[6] -= 2;
-        write16(RR[6], v, mmu.SR[3] & 4);
+        writeW(RR[6], v, mmu.SR[3] & 4);
     }
 
     inline u16 pop() {
-        const auto val = read16(RR[6], mmu.SR[3] & 4);
+        const auto val = readW(RR[6], mmu.SR[3] & 4);
         RR[6] += 2;
         return val;
     }
@@ -292,7 +258,7 @@ class KB11 {
                 }
                 RR[REG(regno)] += 2;
                 mmuStat(regno, 2, src) ;
-                result.operand = read16(result.operand, den && regno < 7, src);
+                result.operand = readW(result.operand, den && regno < 7, src);
                 result.operandType = OPERAND_DATA ;
                 return result ;
             case 4: // Mode 4: -(R)
@@ -311,7 +277,7 @@ class KB11 {
                 }
                 mmuStat(regno, -2, src) ;
                 result.operand = RR[REG(regno)];
-                result.operand = read16(result.operand, den, src);
+                result.operand = readW(result.operand, den, src);
                 result.operandType = OPERAND_DATA ;
                 return result;
             case 6: // Mode 6: d(R)
@@ -328,7 +294,7 @@ class KB11 {
                 if (check_stack && regno == 6) {
                     checkStackLimit(result.operand) ;
                 }
-                result.operand = read16(result.operand, den, src);
+                result.operand = readW(result.operand, den, src);
                 result.operandType = OPERAND_DATA ;
                 return result ;
         }
@@ -346,14 +312,14 @@ class KB11 {
         const bool dpage = denabled() && op.operandType == OPERAND_DATA ;
 
         if constexpr (len == 2) {
-            return read16(op.operand, dpage);
+            return readW(op.operand, dpage);
         }
 
         if (op.operand & 1) {
-            return read16(op.operand & ~1, dpage) >> 010;
+            return readW(op.operand & ~1, dpage) >> 010;
         }
 
-        return read16(op.operand & ~1, dpage) & 0377;
+        return readW(op.operand & ~1, dpage) & 0377;
     }
 
     constexpr inline void branch(const u16 instr) {
@@ -414,12 +380,12 @@ class KB11 {
             }
         }
         if constexpr (l == 2) {
-            return read16(a, d, src);
+            return readW(a, d, src);
         }
         if (a & 1) {
-            return read16(a & ~1, d, src) >> 8;
+            return readW(a & ~1, d, src) >> 8;
         }
-        return read16(a, d, src) & 0xFF;
+        return readW(a, d, src) & 0xFF;
     }
 
     template <auto l> constexpr void write(const u16 a, const u16 v, bool d = false) {
@@ -438,15 +404,15 @@ class KB11 {
         }
 
         if constexpr (l == 2) {
-            write16(a, vl, d);
+            writeW(a, vl, d);
             return;
         }
 
         if (a & 1) {
-            write16(a & ~1, (read16(a & ~1, d, false) & 0xff) | (vl << 8), d);
+            writeW(a & ~1, (readW(a & ~1, d, false) & 0xff) | (vl << 8), d);
         }
         else {
-            write16(a, (read16(a, d, false) & 0xFF00) | (vl & 0xFF), d);
+            writeW(a, (readW(a, d, false) & 0xFF00) | (vl & 0xFF), d);
         }
     }
 

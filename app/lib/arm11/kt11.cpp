@@ -54,6 +54,17 @@ u16 KT11::read16(const u32 a) {
         return UBMR[n] ;
     }
 
+    switch (a) {
+        case 017777572:
+            return SR[0];
+        case 017777574:
+            return SR[1];
+        case 017777576:
+            return SR[2];
+        case 017772516:
+            return SR[3] & 067 ;
+    }
+
     const u8 i = ((a & 017) >> 1);
     const u8 d = i + 8 ;
 
@@ -100,6 +111,21 @@ void KT11::write16(const u32 a, const u16 v) {
         }
         // CLogger::Get()->Write("KT11", LogError, "write16 to %08o UBMR[%d] <- %06o", a, n, v) ;
         return  ;
+    }
+
+    switch (a) {
+        case 017777572:
+            SR[0] = v ;
+            return ;
+        case 017777574:
+            // SR[1] = v; // read-only
+            return ;
+        case 017777576:
+            // cpu.mmu.SR[2] = v; // SR2 is read only
+            return;
+        case 017772516:
+            cpu.mmu.SR[3] = v & 067 ;
+            return ;
     }
 
     const u8 i = ((a & 017) >> 1);

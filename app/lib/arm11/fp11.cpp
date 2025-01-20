@@ -281,19 +281,19 @@ int round_and_pack(fpac_t* fac, int exp, fpac_t* frac, int r);
 
 int ReadW(int addr)
 {
-    return (cpu.read16(addr));
+    return (cpu.readW(addr));
 }
 extern int ReadMW(int addr)
 {
-    return(cpu.read16(addr));
+    return(cpu.readW(addr));
 }
 void WriteW(int data, int addr)
 {
-    cpu.write16(addr, data);
+    cpu.writeW(addr, data);
 }
 extern void PWriteW(int data, int addr)
 {
-    cpu.write16(addr, data);
+    cpu.writeW(addr, data);
 }
 void set_stack_trap(int adr)
 {}
@@ -857,7 +857,7 @@ t_bool ReadFP(fpac_t* fptr, int VA, int spec, int len)
 
 void WriteI(int data, int VA, int spec, int len)
 {
-    cpu.write16(VA, data);
+    cpu.writeW(VA, data);
     return;
 }
 

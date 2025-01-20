@@ -7,13 +7,117 @@
 
 extern KB11 cpu;
 
+XX011 xx011 ;
+
+void UNIBUS::PUT_TBL(const u32 a, const PXX11 v) {
+    assert(tbl_xx[(a & 017777) >> 1] == 0) ;
+    tbl_xx[(a & 017777) >> 1] = v ;
+}
+
 UNIBUS::UNIBUS() {
     core = (u16 *) calloc(1, MEMSIZE) ;
+    tbl_xx = (PXX11*) calloc(4096, sizeof xx011) ;
 }
 
 UNIBUS::~UNIBUS() {
     delete(core) ;
+    delete(tbl_xx) ;
     core = 0 ;
+}
+
+void UNIBUS::init() {
+    // KT11 Unibus Map
+    for (u32 a = 017770200U ; a < 017770400U; a += 2) {
+        PUT_TBL(a, &cpu.mmu) ;
+    }
+
+    // MK11 Control ans status registers
+    for (u32 a = 017772100U; a < 017772140U; a += 2) {
+        PUT_TBL(a, &xx011) ;
+    }
+
+    // KE11 registers
+    for (u32 a = 017777310U; a < 017777332U; a += 2) {
+        PUT_TBL(a, &xx011) ;
+    }
+
+    // VT11 registers
+    for (u32 a = 017772000U; a < 017772040U; a += 2) {
+        PUT_TBL(a, &vt11) ;
+    }
+
+    PUT_TBL(017777776, &cpu) ;
+    PUT_TBL(017777774, &cpu) ;
+    PUT_TBL(017777772, &cpu) ;
+    PUT_TBL(017777770, &cpu) ;
+    PUT_TBL(017777766, &cpu) ;
+    PUT_TBL(017777570, &cpu) ;
+    PUT_TBL(017777740, &cpu) ;
+    PUT_TBL(017777742, &cpu) ;
+    PUT_TBL(017777744, &cpu) ;
+    PUT_TBL(017777746, &cpu) ;
+    PUT_TBL(017777750, &cpu) ;
+    PUT_TBL(017777752, &cpu) ;
+    PUT_TBL(017777764, &cpu) ;
+    PUT_TBL(017777760, &cpu) ;
+    PUT_TBL(017777762, &cpu) ;
+
+    PUT_TBL(TC11_ST, &tc11) ;
+    PUT_TBL(TC11_CM, &tc11) ;
+    PUT_TBL(TC11_WC, &tc11) ;
+    PUT_TBL(TC11_BA, &tc11) ;
+    PUT_TBL(TC11_DT, &tc11) ;
+
+    PUT_TBL(RK11_CSR, &rk11) ;
+    PUT_TBL(017777402, &rk11) ;
+    PUT_TBL(017777404, &rk11) ;
+    PUT_TBL(017777406, &rk11) ;
+    PUT_TBL(017777410, &rk11) ;
+    PUT_TBL(017777412, &rk11) ;
+
+    PUT_TBL(DEV_RL_CS, &rl11) ;
+    PUT_TBL(DEV_RL_MP, &rl11) ;
+    PUT_TBL(DEV_RL_BA, &rl11) ;
+    PUT_TBL(DEV_RL_DA, &rl11) ;
+    PUT_TBL(DEV_RL_BAE, &rl11) ;
+
+    PUT_TBL(DL11_CSR, &dl11) ;
+    PUT_TBL(017776502, &dl11) ;
+    PUT_TBL(017776504, &dl11) ;
+    PUT_TBL(017776506, &dl11) ;
+
+    PUT_TBL(KL11_XCSR, &cons) ;
+    PUT_TBL(KL11_XBUF, &cons) ;
+    PUT_TBL(KL11_RCSR, &cons) ;
+    PUT_TBL(KL11_RBUF, &cons) ;
+
+    PUT_TBL(LP11_LPS, &lp11) ;
+    PUT_TBL(LP11_LPD, &lp11) ;
+
+    PUT_TBL(PC11_PRS, &ptr_ptp) ;
+    PUT_TBL(PC11_PRB, &ptr_ptp) ;
+    PUT_TBL(PC11_PPS, &ptr_ptp) ;
+    PUT_TBL(PC11_PPB, &ptr_ptp) ;
+
+    PUT_TBL(KW11_CSR, &kw11) ;
+    PUT_TBL(KW11P_CSR, &kw11) ;
+    PUT_TBL(KW11P_CSB, &kw11) ;
+    PUT_TBL(KW11P_CTR, &kw11) ;
+
+    PUT_TBL(017777572, &cpu.mmu) ;
+    PUT_TBL(017777574, &cpu.mmu) ;
+    PUT_TBL(017777576, &cpu.mmu) ;
+    PUT_TBL(017772516, &cpu.mmu) ;
+
+    // KT11 SS/KK PAR/PDR
+    for (u32 a = 017772200; a < 017772400; a += 2) {
+        PUT_TBL(a, &cpu.mmu) ;
+    }
+
+    // KT11 UU PAR/PDR
+    for (u32 a = 017777600; a < 017777700; a += 2) {
+        PUT_TBL(a, &cpu.mmu) ;
+    }
 }
 
 void UNIBUS::ub_write16(const u32 a, const u16 v) {
@@ -39,121 +143,15 @@ void UNIBUS::write16(const u32 a, const u16 v) {
         return;
     }
 
-    if (a >= 017770200U && a <= 017770376U) {
-        cpu.mmu.write16(a, v) ;
+    PXX11 px = tbl_xx[(a & 017777) >> 1] ;
+    if (px) {
+        px->write16(a, v) ;
         return ;
     }
 
-    // MK11 Control ans status registers
-    if (a >= 017772100U && a <= 017772136U) {
-        return ;
-    }
-
-    // KE11 registers
-    if (a >= 017777310U && a <= 017777330U) {
-        return ;
-    }
-
-    // VT11 registers
-    if (a >= 017772000U && a <= 017772036U) {
-        vt11.write16(a, v) ;
-        return ;
-    }
-
-    switch (a) {
-        case 017777776:
-        case 017777774:
-        case 017777772:
-        case 017777770:
-        case 017777766: // cpu error register
-        case 017777740:
-        case 017777742:
-        case 017777744:
-        case 017777746:
-        case 017777750:
-        case 017777752:
-        case 017777570:
-            cpu.writeA(a, v) ;
-            return ;
-
-        case TC11_ST:
-        case TC11_CM:
-        case TC11_WC:
-        case TC11_BA:
-        case TC11_DT:
-            tc11.write16(a, v) ;
-            return ;
-    }
-
-    switch (a & ~077) {
-        case RK11_CSR:      
-            rk11.write16(a, v);
-            return;
-        case RL11_CSR:
-            rl11.write16(a, v);
-            return;
-        case DL11_CSR:
-            switch (a & ~7) {
-                case DL11_CSR:
-                    dl11.write16(a, v);
-                    return;
-                }
-			cpu.errorRegister = 020 ;
-            trap(INTBUS);
-        case 017777500:
-            switch (a) {
-                case LP11_LPS:
-                case LP11_LPD:
-                    lp11.write16(a, v);
-                    return;
-                case PC11_PRS:
-                case PC11_PRB:
-                case PC11_PPS:
-                case PC11_PPB:
-                    ptr_ptp.write16(a, v) ;
-                    return ;
-                case KW11_CSR:
-                    kw11.write16(a, v);
-                    return;
-                case 017777572:
-                    cpu.mmu.SR[0] = v;
-                    return;
-                case 017777574:
-                    // cpu.mmu.SR[1] = v; // read-only
-                    return;
-                case 017777576:
-                    // cpu.mmu.SR[2] = v; // SR2 is read only
-                    return;
-                default:
-                    cons.write16(a, v);
-                    return;
-            }
-        case 017772200: // KK
-        case 017772300: // SS
-        case 017777600: // UU
-            cpu.mmu.write16(a, v);
-            return;
-        case 017772500:
-            switch (a) {
-                case KW11P_CSR:
-                case KW11P_CSB:
-                case KW11P_CTR:
-                    kw11.write16(a, v) ;
-                    return ;
-                case 017772516:
-                    cpu.mmu.SR[3] = v & 067 ;
-                    return ;
-                default:
-        			cpu.errorRegister = 020 ;
-                    trap(INTBUS);
-            }
-        case 017777700:
-            cpu.write16(a, v) ;
-        default:
-            // CLogger::Get()->Write("UNIBUS", LogError, "write16 non-existent address %08o : %06o", a, v) ;
-			cpu.errorRegister = 020 ;
-            trap(INTBUS);
-    }
+    CLogger::Get()->Write("UNIBUS", LogError, "write16 non-existent address %08o", a) ;
+    cpu.errorRegister = 020 ;
+    trap(INTBUS);
     return;
 }
 
@@ -170,7 +168,6 @@ u16 UNIBUS::ub_read16(const u32 a) {
 
 u16 UNIBUS::read16(const u32 a) {
     if (a & 1) {
-        //printf("unibus: read16 from odd address %06o\n", a);
         cpu.errorRegister = 0100 ;
         trap(INTBUS);
     }
@@ -179,108 +176,14 @@ u16 UNIBUS::read16(const u32 a) {
         return core[a >> 1];
     }
 
-    if (a >= 017770200U && a <= 017770376U) {
-        return cpu.mmu.read16(a) ;
+    PXX11 px = tbl_xx[(a & 017777) >> 1] ;
+    if (px) {
+        return px->read16(a) ;
     }
 
-    // MK11 Control ans status registers
-    if (a >= 017772100U && a <= 017772136U) {
-        return 0 ;
-    }
-
-    // KE11 registers
-    if (a >= 017777310U && a <= 017777330U) {
-        return 0 ;
-    }
-
-    // VT11 registers
-    if (a >= 017772000U && a <= 017772036U) {
-        return vt11.read16(a);
-    }
-
-    switch (a) {
-        case 017777776:
-        case 017777774:
-        case 017777772:
-        case 017777770:
-        case 017777766: // cpu error register
-        case 017777570:
-        case 017777740:
-        case 017777742:
-        case 017777744:
-        case 017777746:
-        case 017777750:
-        case 017777752:
-            return cpu.readA(a);
-
-        case 017777764:
-            return 011064 ; // System I/D
-        case 017777762:
-            return 0 ; // Upper Size
-        case 017777760:
-            return (MEMSIZE >> 6) - 1 ; // Lower Size
-        case TC11_ST:
-        case TC11_CM:
-        case TC11_WC:
-        case TC11_BA:
-        case TC11_DT:
-            return tc11.read16(a) ;
-    }
-
-    switch (a & ~077) {
-        case RK11_CSR:
-            return rk11.read16(a);
-        case RL11_CSR:
-            return rl11.read16(a);
-        case DL11_CSR:
-            switch (a & ~7) {
-                case DL11_CSR:
-                    return dl11.read16(a);
-            }
-			cpu.errorRegister = 020 ;
-            trap(INTBUS);
-        case 017777500:
-            switch (a) {
-                case LP11_LPS:
-                case LP11_LPD:
-                    return lp11.read16(a);
-                case PC11_PRS:
-                case PC11_PRB:
-                case PC11_PPS:
-                case PC11_PPB:
-                    return ptr_ptp.read16(a) ;
-                case KW11_CSR:
-                    return kw11.read16(a);
-                case 017777572:
-                    return cpu.mmu.SR[0];
-                case 017777574:
-                    return cpu.mmu.SR[1];
-                case 017777576:
-                    return cpu.mmu.SR[2];
-                default:
-                    return cons.read16(a);
-            }
-        case 017772200: // SS
-        case 017772300: // KK
-        case 017777600: // UU
-            return cpu.mmu.read16(a);
-        case 017772500:
-            switch (a) {
-                case KW11P_CSR:
-                case KW11P_CSB:
-                case KW11P_CTR:
-                    return kw11.read16(a);
-                case 017772516:
-                    return cpu.mmu.SR[3] & 067 ;
-                default:
-        			cpu.errorRegister = 020 ;
-                    trap(INTBUS);
-            }
-        default:
-            // CLogger::Get()->Write("UNIBUS", LogError, "read16  non-existent address %08o", a) ;
-			cpu.errorRegister = 020 ;
-            trap(INTBUS);
-    }
+    CLogger::Get()->Write("UNIBUS", LogError, "read16 non-existent address %08o", a) ;
+    cpu.errorRegister = 020 ;
+    trap(INTBUS);
     return 0;
 }
 

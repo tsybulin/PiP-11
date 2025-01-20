@@ -33,7 +33,7 @@ static int _kbhit() {
 	// return true ;
 }
 
-u16 DL11::read16(u32 a) {
+u16 DL11::read16(const u32 a) {
 	switch (a & 7) {
 		case 00:
 			return rcsr;
@@ -52,7 +52,7 @@ u16 DL11::read16(u32 a) {
 	}
 }
 
-void DL11::write16(u32 a, u16 v) {
+void DL11::write16(const u32 a, const u16 v) {
 	switch (a & 7) {
 		case 00:
 			rcsr = ((rcsr & 0200) ^ (v & ~0200));

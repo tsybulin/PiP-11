@@ -1,6 +1,7 @@
 #pragma once
 
 #include <circle/types.h>
+#include "xx11.h"
 
 #define VT11_DPC    017772000
 #define VT11_MPR    017772002
@@ -19,11 +20,11 @@
 #define VT11_ZPR    017772034
 #define VT11_ZOR    017772036
 
-class VT11 {
+class VT11 : public XX11 {
     public:
         VT11() ;
-        u16 read16(u32 a) ;
-        void write16(u32 a, u16 v) ;
+        virtual u16 read16(const u32 a) ;
+        virtual void write16(const u32 a, const u16 v) ;
     private:
         u16 dpc, mpr, gixpr, ccypr, rr, spr, xosr, yosr, anr, samr ;
 } ;

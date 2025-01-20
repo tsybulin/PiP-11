@@ -39,12 +39,55 @@ void KB11::reset(u16 start) {
     errorRegister = 0 ;
 }
 
-void KB11::write16(const u16 va, const u16 v, bool d, bool src) {
-    const auto a = mmu.decode<true>(va, currentmode(), d, src);
-    writeA(a, v) ;
+u16 KB11::readW(const u16 va, bool d, bool src) {
+    const auto a = mmu.decode<false>(va, currentmode(), d, src);
+    return read16(a) ;
 }
 
-void KB11::writeA(const u32 a, const u16 v) {
+u16 KB11::read16(const u32 a) {
+        ldat = a ;
+        switch (a) {
+            case 017777776:
+                return PSW;
+            case 017777774:
+                return stacklimit;
+            case 017777772:
+                return pirqr ;
+            case 017777770:
+                return microbrreg ;
+            case 017777766: // cpu error register
+                return errorRegister ;
+            case 017777570:
+                return switchregister;
+            case 017777740:
+                return lowErrorAddressRegister ;
+            case 017777742:
+                return highErrorAddressRegister ;
+            case 017777744:
+                return memorySystemErrorRegister ;
+            case 017777746:
+                return memoryControlRegister ;
+            case 017777750:
+                return memoryMaintenanceRegister ;
+            case 017777752:
+                return hitMissRegister ;
+            case 017777764:
+                return 011064 ; // System I/D
+            case 017777762:
+                return 0 ; // Upper Size
+            case 017777760:
+                return (MEMSIZE >> 6) - 1 ; // Lower Size
+            default:
+                return unibus.read16(a);
+        }
+}
+
+void KB11::writeW(const u16 va, const u16 v, bool d, bool src) {
+    const auto a = mmu.decode<true>(va, currentmode(), d, src);
+    write16(a, v) ;
+}
+
+void KB11::write16(const u32 a, const u16 v) {
     switch (a) {
         case 017777772: {
                 pirqr = v & 0177000 ;
@@ -977,8 +1020,8 @@ void KB11::trapat(u8 vec) {
     RR[7] = unibus.read16(mmu.decode<false>(vec, 0, mmu.SR[3] & 4, true));       // Get from K-apace
     if ((RR[6] & 1) == 0) {
         RR[6] -= 4 ;
-        write16(RR[6]+2, opsw, mmu.SR[3] & 4) ;
-        write16(RR[6],   PC,   mmu.SR[3] & 4) ;
+        writeW(RR[6]+2, opsw, mmu.SR[3] & 4) ;
+        writeW(RR[6],   PC,   mmu.SR[3] & 4) ;
     }
     wtstate = false;
 
@@ -1005,7 +1048,7 @@ void KB11::ptstate() {
         Z() ? "Z" : "-",
         V() ? "V" : "-",
         C() ? "C" : "-");
-    Console::get()->printf("]\r\n    instr %06o: %06o   ", RR[7], read16(RR[7]));
+    Console::get()->printf("]\r\n    instr %06o: %06o   ", RR[7], readW(RR[7]));
 
     disasm(RR[7]);
 

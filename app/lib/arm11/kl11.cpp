@@ -39,7 +39,7 @@ void KL11::clearterminal() {
 	xbuf = 0;
 }
 
-u16 KL11::read16(u32 a) {
+u16 KL11::read16(const u32 a) {
 	switch (a) {
 		case KL11_RCSR:
 			return rcsr;
@@ -57,7 +57,7 @@ u16 KL11::read16(u32 a) {
 	}
 }
 
-void KL11::write16(u32 a, u16 v) {
+void KL11::write16(const u32 a, const u16 v) {
 	switch (a) {
 		case KL11_RCSR:
 			rcsr = ((rcsr & 0200) ^ (v & ~0200));

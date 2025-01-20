@@ -2,6 +2,7 @@
 
 #include <circle/types.h>
 #include <fatfs/ff.h>
+#include "xx11.h"
 
 #define TC11_ST 017777340
 #define TC11_CM 017777342
@@ -16,12 +17,12 @@ struct TC11Unit {
     FIL file ;
 } ;
 
-class TC11 {
+class TC11 : public XX11 {
     public:
         TC11() ;
 
-        u16 read16(u32 a) ;
-        void write16(u32 a, u16 v) ;
+        virtual u16 read16(u32 a) ;
+        virtual void write16(u32 a, u16 v) ;
         void reset() ;
         void step();
 

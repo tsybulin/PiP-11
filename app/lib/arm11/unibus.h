@@ -8,18 +8,21 @@
 #include "dl11.h"
 #include "tc11.h"
 #include "vt11.h"
+#include "xx11.h"
 
 const u32 MEMSIZE = //004000000 ; // 1024K
                   017760000 ; // 4088K
 
-class UNIBUS {
+class UNIBUS : public XX11 {
     public:
         UNIBUS() ;
         ~UNIBUS() ;
 
-        void write16(u32 a, u16 v) ;
+        void init() ;
+
+        virtual void write16(const u32 a, const u16 v) ;
         void ub_write16(u32 a, u16 v) ;
-        u16 read16(u32 a) ;
+        virtual u16 read16(const u32 a) ;
         u16 ub_read16(u32 a) ;
         void reset(bool i2c = true) ;
 
@@ -33,4 +36,8 @@ class UNIBUS {
         TC11 tc11 ;
         VT11 vt11 ;
         u16 *core ;
+    private:
+        void PUT_TBL(const u32 a, const PXX11 v) ;
+
+        PXX11 *tbl_xx ;
 } ;

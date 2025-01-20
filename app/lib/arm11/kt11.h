@@ -1,9 +1,11 @@
 #pragma once
+
 #include "arm11.h"
 
 #include <cons/cons.h>
+#include "xx11.h"
 
-class KT11 {
+class KT11 : public XX11 {
     public:
         KT11() ;
 
@@ -81,7 +83,7 @@ class KT11 {
                 infotrap = true ;
             }
 
-            if (aa > 0760000) {
+            if (aa > 0757777) {
                 aa += 017000000 ;
             }
 
@@ -152,7 +154,7 @@ class KT11 {
             }
 
             // The 124K of addresses from 17 000 000 - 17 757 777 may be used to access memory via the Unibus Map
-            if (aa > 017000000U && aa < 017760000U) {
+            if (aa > 016777777U && aa < 017760000U) {
                 aa = ub_decode(aa & 0777777) ;
             }
 
@@ -195,8 +197,8 @@ class KT11 {
             return aa ;
         }
 
-        u16 read16(const u32 a);
-        void write16(const u32 a, const u16 v);
+        virtual u16 read16(const u32 a);
+        virtual void write16(const u32 a, const u16 v);
 
         struct page {
             u16 par,  // page address register (base address relocation register)

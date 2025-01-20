@@ -32,7 +32,7 @@ static void lp11_i2c_write(const u8 addr, const u16 v) {
     }
 }
 
-u16 LP11::read16(u32 a) {
+u16 LP11::read16(const u32 a) {
     switch (a) {
     case LP11_LPS:
         return lp11_i2c_read(LP11_I2C_LPS) ;
@@ -45,7 +45,7 @@ u16 LP11::read16(u32 a) {
     }
 }
 
-void LP11::write16(u32 a, u16 v) {
+void LP11::write16(const u32 a, const u16 v) {
     switch (a) {
         case LP11_LPS: {
                 lp11_i2c_write(LP11_I2C_LPS, v) ;
