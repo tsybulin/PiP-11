@@ -51,7 +51,7 @@ u16 KL11::read16(u32 a) {
 		case KL11_XBUF:
 			return xbuf & 0377 ;
 		default:
-			cpu.errorRegister |= 020 ;
+			cpu.errorRegister = 020 ;
 			trap(INTBUS);
 			return 0 ;
 	}
@@ -82,7 +82,7 @@ void KL11::write16(u32 a, u16 v) {
 
 		default:
 			gprintf("kl11: write to invalid address %06o\n", a);
-			cpu.errorRegister |= 020 ;
+			cpu.errorRegister = 020 ;
 			trap(INTBUS);
 	}
 }

@@ -33,7 +33,7 @@ u16 RK11::read16(const u32 a) {
             return rkda;
         default:
             //printf("rk11::read16 invalid read %06o\n", a);
-			cpu.errorRegister |= 020 ;
+			cpu.errorRegister = 020 ;
             trap(INTBUS);
         }
     return 0;
@@ -196,7 +196,7 @@ void RK11::write16(const u32 a, const u16 v) {
             break;
         default:
             gprintf("rk11::write16 invalid write %06o: %06o\n", a, v);
-			cpu.errorRegister |= 020 ;
+			cpu.errorRegister = 020 ;
             trap(INTBUS) ;
     }
 }

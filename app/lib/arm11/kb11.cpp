@@ -73,7 +73,6 @@ void KB11::writeA(const u32 a, const u16 v) {
 
                 pirqr |= pia ;
             }
-
             break ;
         case 017777776:
             writePSW(v);
@@ -87,7 +86,23 @@ void KB11::writeA(const u32 a, const u16 v) {
         case 017777766: // cpu error register
             errorRegister = v ;
             break;
-        case 017777744: // mem error register
+        case 017777740:
+            lowErrorAddressRegister = v ;
+            break ;
+        case 017777742:
+            highErrorAddressRegister = v ;
+            break;
+        case 017777744:
+            memorySystemErrorRegister &= ~v ;
+            break;
+        case 017777746:
+            memoryControlRegister = v & 077 ;
+            break ;
+        case 017777750:
+            memoryMaintenanceRegister = v & 0177776 ;
+            break ;
+        case 017777752:
+            hitMissRegister = v ;
             break ;
         case 017777570:
             displayregister = v;
@@ -571,7 +586,7 @@ void KB11::step() {
                             switch (instr) {
                                 case 0: // HALT 000000
                                     if (currentmode()) {
-                            			errorRegister |= 0200 ;
+                            			errorRegister = 0200 ;
                                         trap(INTBUS);
                                     }
                                     // Console::get()->printf(" HALT:\r\n");

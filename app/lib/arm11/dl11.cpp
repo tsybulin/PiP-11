@@ -46,7 +46,7 @@ u16 DL11::read16(u32 a) {
 			return xbuf;
 		default:
 			gprintf("Dl11: read from invalid address %06o\n", a);
-			cpu.errorRegister |= 020 ;
+			cpu.errorRegister = 020 ;
 			trap(INTBUS);
 			return 0 ;
 	}
@@ -76,7 +76,7 @@ void DL11::write16(u32 a, u16 v) {
 			break;
 		default:
 			gprintf("Dl11: write to invalid address %06o\n", a);
-			cpu.errorRegister |= 020 ;
+			cpu.errorRegister = 020 ;
 			trap(INTBUS);
 	}
 }

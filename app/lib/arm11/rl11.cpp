@@ -99,7 +99,7 @@ u16 RL11::read16(u32 a) {
         case DEV_RL_BAE:
             return (RLBA & 0600000) >> 16;
         default:
-			cpu.errorRegister |= 020 ;
+			cpu.errorRegister = 020 ;
             trap(INTBUS) ;
             return 0;
     }
@@ -242,7 +242,7 @@ void RL11::write16(u32 a, u16 v) {
         RLBA = (RLBA & 0xffff) | ((v & 077) << 16);
         break;
     default:
-        cpu.errorRegister |= 020 ;
+        cpu.errorRegister = 020 ;
         trap(INTBUS);
     }
 }

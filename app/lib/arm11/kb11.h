@@ -121,10 +121,20 @@ class KB11 {
                 return microbrreg ;
             case 017777766: // cpu error register
                 return errorRegister ;
-            case 017777744: // mem error register
-                return 0 ;
             case 017777570:
                 return switchregister;
+            case 017777740:
+                return lowErrorAddressRegister ;
+            case 017777742:
+                return highErrorAddressRegister ;
+            case 017777744:
+                return memorySystemErrorRegister ;
+            case 017777746:
+                return memoryControlRegister ;
+            case 017777750:
+                return memoryMaintenanceRegister ;
+            case 017777752:
+                return hitMissRegister ;
             default:
                 return unibus.read16(a);
         }
@@ -157,7 +167,13 @@ class KB11 {
     u8 interrupt_vector() ;
   private:
     u16 oldPSW;
-    u16 stacklimit, switchregister, displayregister, microbrreg, datapath ;
+    u16 stacklimit, switchregister, displayregister, microbrreg, datapath,
+        lowErrorAddressRegister,
+        highErrorAddressRegister,
+        memorySystemErrorRegister,
+        memoryControlRegister,
+        memoryMaintenanceRegister,
+        hitMissRegister ;
     u16 stackpointer[4]; // Alternate R6 (kernel, super, illegal, user)
     u16 pirqr = 0 ;
     u32 ldat = 0, lda = 0 ;

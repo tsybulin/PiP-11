@@ -33,7 +33,4 @@ class UNIBUS {
         TC11 tc11 ;
         VT11 vt11 ;
         u16 *core ;
-
-    private:
-        u16 cache_control ;
 } ;

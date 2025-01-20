@@ -184,10 +184,10 @@ void loop() {
         }
 
         if (cpu.stackTrap == STACK_TRAP_YELLOW) {
-            cpu.errorRegister |= 010 ;
+            cpu.errorRegister = 010 ;
             cpu.trapat(INTBUS) ;
         } else if (cpu.stackTrap == STACK_TRAP_RED) {
-            cpu.errorRegister |= 4 ;
+            cpu.errorRegister = 4 ;
             cpu.RR[6] = 4 ;
             trap(INTBUS) ;
         }

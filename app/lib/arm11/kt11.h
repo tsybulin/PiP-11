@@ -151,10 +151,10 @@ class KT11 {
                 infotrap = true ;
             }
 
-            // temp. fix for I/O page relocation
-            // if (aa > 0760000) {
-            //     aa += 017000000 ;
-            // }
+            // The 124K of addresses from 17 000 000 - 17 757 777 may be used to access memory via the Unibus Map
+            if (aa > 017000000U && aa < 017760000U) {
+                aa = ub_decode(aa & 0777777) ;
+            }
 
             return aa ;
         }

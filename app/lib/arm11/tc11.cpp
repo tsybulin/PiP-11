@@ -43,7 +43,7 @@ u16 TC11::read16(u32 a) {
         
         default:
             CLogger::Get()->Write("TC11", LogError, "read16 non-existent address %08o", a) ;
-			cpu.errorRegister |= 020 ;
+			cpu.errorRegister = 020 ;
             trap(INTBUS);
     }
 
@@ -86,7 +86,7 @@ void TC11::write16(u32 a, u16 v) {
         
         default:
             CLogger::Get()->Write("TC11", LogError, "write16 non-existent address %08o : %06o", a, v) ;
-			cpu.errorRegister |= 020 ;
+			cpu.errorRegister = 020 ;
             trap(INTBUS);
     }
 }
