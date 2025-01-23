@@ -109,6 +109,19 @@ jmp_buf trapbuf;
 
 void trap(u8 vec) { longjmp(trapbuf, vec); }
 
+inline bool QINTERRUPT() {
+    u8 ivec = cpu.interrupt_vector() ;
+    if (ivec) {
+        cpu.trapat(ivec) ;
+        if (cpu.cpuStatus == CPU_STATUS_STEP) {
+            cpu.cpuStatus = CPU_STATUS_HALT ;
+        }
+        return true ;
+    }
+
+    return false ;
+}
+
 void loop() {
     auto vec = setjmp(trapbuf);
 
@@ -167,6 +180,10 @@ void loop() {
             cpu.unibus.kw11.ptick() ;
         }
 
+        if (QINTERRUPT()) {
+            return ; // exit from loop to reset trapbuf
+        }
+
         if (!cpu.wtstate) {
             cpu.wasRTT = false ;
             cpu.wasSPL = false ;
@@ -192,12 +209,7 @@ void loop() {
             trap(INTBUS) ;
         }
 
-        u8 ivec = cpu.interrupt_vector() ;
-        if (ivec) {
-            cpu.trapat(ivec) ;
-            if (cpu.cpuStatus == CPU_STATUS_STEP) {
-                cpu.cpuStatus = CPU_STATUS_HALT ;
-            }
+        if (QINTERRUPT()) {
             return ; // exit from loop to reset trapbuf
         }
 

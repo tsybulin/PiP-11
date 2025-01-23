@@ -23,7 +23,7 @@ void disasm(u16 ia);
 void fp11(int IR);
 
 KB11::KB11() {
-    for (int i = 0; i < 255; i += 2) {
+    for (int i = 0; i < 128; i++) {
         irqs[i] = 0 ;
     }
 }
@@ -119,6 +119,7 @@ void KB11::write16(const u32 a, const u16 v) {
             break ;
         case 017777776:
             writePSW(v);
+            updatePriority() ;
             break;
         case 017777774:
             stacklimit = v & 0177400 ;
@@ -958,13 +959,13 @@ void KB11::calc_irqs() {
     irq_vec = 0 ;
     u8 pri = 0 ;
     
-    for (int i = 0; i < 255; i += 2) {
+    for (int i = 0; i < 128; i++) {
         if (!irqs[i]) {
             continue ;
         }
 
         if (irqs[i] >= pri) {
-            irq_vec = i ;
+            irq_vec = i << 1;
             pri = irqs[i] ;
         }
     }
@@ -980,13 +981,13 @@ u8 KB11::interrupt_vector() {
         return 0 ;
     }
 
-    u8 v = irq_vec ;
+    u8 v = irq_vec >> 1;
 
     if (irqs[v] > cpuPriority) {
         irqs[v] = 0 ;
         irq_vec = 0 ;
         irq_dirty = true ;
-        return v ;
+        return v << 1;
     }
 
     return 0 ;
@@ -998,7 +999,7 @@ void KB11::interrupt(const u8 vec, const u8 pri) {
         while(!interrupted);
     }
 
-    irqs[vec] = pri ;
+    irqs[vec >> 1] = pri ;
     irq_dirty = true ;
 }
 

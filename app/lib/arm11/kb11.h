@@ -118,8 +118,8 @@ class KB11 : public XX11 {
     }
 
     inline void clearIRQ(const u8 vec) {
-        if (irqs[vec]) {
-            irqs[vec] = 0 ;
+        if (irqs[vec >> 1]) {
+            irqs[vec >> 1] = 0 ;
             irq_dirty = true ;
         }
     }
@@ -145,7 +145,7 @@ class KB11 : public XX11 {
     u32 ldat = 0, lda = 0 ;
 
     u8 cpuPriority = 0 ;
-    u8 irqs[256] ;
+    u8 irqs[128] ;
     u8 irq_vec = 0;
     bool irq_dirty = false ;
     void calc_irqs() ;
