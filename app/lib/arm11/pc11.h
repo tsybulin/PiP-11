@@ -16,5 +16,7 @@ class PC11 : public XX11 {
         void step() ;
 
     private:
+        void ptr_step() ;
+        void ptp_step() ;
         bool ptrcheck, ptpcheck ;
 } ;

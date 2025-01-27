@@ -11,6 +11,7 @@ const u8 LP11_I2C_LPB = 016 ;
 extern KB11 cpu;
 extern volatile bool interrupted ;
 extern CI2CMaster *pI2cMaster ;
+int lp11_delay = 0 ;
 
 static u16 lp11_i2c_read(const u8 addr) {
     u8 result[3] = {0, 0, 0} ;
@@ -59,6 +60,7 @@ void LP11::write16(const u32 a, const u16 v) {
             break;
         case LP11_LPD:
             lp11_i2c_write(LP11_I2C_LPB, v) ;
+            lp11_delay = 0 ;
             lpcheck = true ;
             break;
         default:
@@ -72,24 +74,23 @@ void LP11::reset() {
     lpcheck = false ;
 }
 
-int lp11_delay = 0;
-
 void LP11::step() {
+    if (!lpcheck) {
+        return ;
+    }
+
     if (lp11_delay++ < 200) {
         return ;
     }
 
     lp11_delay = 0 ;
 
-    // lp
-    if (lpcheck) {
-        u16 lps = lp11_i2c_read(LP11_I2C_LPS) ;
-        if (lps & 0200) {
-            lpcheck = false ;
+    u16 lps = lp11_i2c_read(LP11_I2C_LPS) ;
+    if (lps & 0200) {
+        lpcheck = false ;
 
-            if (lps & 0100) {
-                cpu.interrupt(INTLP, 4) ;
-            }
+        if (lps & 0100) {
+            cpu.interrupt(INTLP, 4) ;
         }
     }
 }

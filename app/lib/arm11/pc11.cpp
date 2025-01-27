@@ -17,6 +17,9 @@ extern volatile bool interrupted ;
 extern KB11 cpu;
 extern CI2CMaster *pI2cMaster ;
 
+int ptp_delay = 0 ;
+int ptr_delay = 0 ;
+
 static u16 pc11_i2c_read(const u8 addr) {
     u8 result[3] = {0, 0, 0} ;
     int r = pI2cMaster->WriteReadRepeatedStart(I2C_SLAVE, &addr, 1, result, 3) ;
@@ -58,6 +61,7 @@ void PC11::write16(const u32 a, const u16 v) {
         case PC11_PRS:
             pc11_i2c_write(PC11_I2C_PRS, v) ;
             if (v & 01) {
+                ptr_delay = 0 ;
                 ptrcheck = true ;
             }
             break;
@@ -75,6 +79,7 @@ void PC11::write16(const u32 a, const u16 v) {
             break ;
         case PC11_PPB:
             pc11_i2c_write(PC11_I2C_PPB, v) ;
+            ptp_delay = 0 ;
             ptpcheck = true ;
             break;
         default:
@@ -90,39 +95,52 @@ void PC11::reset() {
     pI2cMaster->Write(I2C_SLAVE, &PC11_I2C_RST, 1) ;
 }
 
-int pc11_delay = 0;
-
 void PC11::step() {
-    if (pc11_delay++ < 200) {
+    ptr_step() ;
+    ptp_step() ;
+}
+
+void PC11::ptr_step() {
+    if (!ptrcheck) {
         return ;
     }
 
-    pc11_delay = 0 ;
-
-    // ptr
-    if (ptrcheck) {
-        u16 prs = pc11_i2c_read(PC11_I2C_PRS) ;
-        if (prs & 0200) {
-            ptrcheck = false ;
-            if (prs & 0100) {
-                cpu.interrupt(INTPTR, 4) ;
-            } else {
-                cpu.clearIRQ(INTPTR) ;
-            }
-        }
+    if (ptr_delay++ < 200) {
+        return ;
     }
 
-    // ptp
-    if (ptpcheck) {
-        u16 pps = pc11_i2c_read(PC11_I2C_PPS) ;
-        if (pps & 0200) {
-            ptpcheck = false ;
+    ptr_delay = 0 ;
 
-            if (pps & 0100) {
-                cpu.interrupt(INTPTP, 4) ;
-            } else {
-                cpu.clearIRQ(INTPTP) ;
-            }
+    u16 prs = pc11_i2c_read(PC11_I2C_PRS) ;
+    if (prs & 0200) {
+        ptrcheck = false ;
+        if (prs & 0100) {
+            cpu.interrupt(INTPTR, 4) ;
+        } else {
+            cpu.clearIRQ(INTPTR) ;
+        }
+    }
+}
+
+void PC11::ptp_step() {
+    if (!ptpcheck) {
+        return ;
+    }
+
+    if (ptp_delay++ < 75000) {
+        return ;
+    }
+
+    ptp_delay = 0 ;
+
+    u16 pps = pc11_i2c_read(PC11_I2C_PPS) ;
+    if (pps & 0200) {
+        ptpcheck = false ;
+
+        if (pps & 0100) {
+            cpu.interrupt(INTPTP, 4) ;
+        } else {
+            cpu.clearIRQ(INTPTP) ;
         }
     }
 }
