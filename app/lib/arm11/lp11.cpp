@@ -4,12 +4,14 @@
 #include <circle/i2cmaster.h>
 #include <cons/cons.h>
 
+extern KB11 cpu;
+extern volatile bool interrupted ;
+
+#ifndef NOI2C
 #define I2C_SLAVE 050
 const u8 LP11_I2C_LPS = 014 ;
 const u8 LP11_I2C_LPB = 016 ;
 
-extern KB11 cpu;
-extern volatile bool interrupted ;
 extern CI2CMaster *pI2cMaster ;
 int lp11_delay = 0 ;
 
@@ -32,13 +34,24 @@ static void lp11_i2c_write(const u8 addr, const u16 v) {
         gprintf("lp11_i2c_write: a=%03o, v=%06o, r=%d, ret=%03o", addr, r, result) ;
     }
 }
+#else
+    u16 lps, lpd ;
+#endif
 
 u16 LP11::read16(const u32 a) {
     switch (a) {
     case LP11_LPS:
+#ifndef NOI2C
         return lp11_i2c_read(LP11_I2C_LPS) ;
+#else
+        return lps ;
+#endif
     case LP11_LPD:
+#ifndef NOI2C
         return lp11_i2c_read(LP11_I2C_LPB) ;
+#else
+        return lpd ;
+#endif
     default:
         gprintf("lp11: read from invalid address %06o\n", a);
         while(!interrupted) {}
@@ -49,8 +62,12 @@ u16 LP11::read16(const u32 a) {
 void LP11::write16(const u32 a, const u16 v) {
     switch (a) {
         case LP11_LPS: {
+#ifndef NOI2C
                 lp11_i2c_write(LP11_I2C_LPS, v) ;
                 u16 lps = lp11_i2c_read(LP11_I2C_LPS) ;
+#else
+                lps = v | 0200 ;
+#endif
                 if ((lps & 0100) && (lps & 0100200)) {
                     cpu.interrupt(INTLP, 4);
                 } else {
@@ -59,9 +76,13 @@ void LP11::write16(const u32 a, const u16 v) {
             }
             break;
         case LP11_LPD:
+#ifndef NOI2C
             lp11_i2c_write(LP11_I2C_LPB, v) ;
             lp11_delay = 0 ;
             lpcheck = true ;
+#else
+            lpd = v ;
+#endif
             break;
         default:
             gprintf("lp11: write to invalid address %06o", a);
@@ -75,6 +96,7 @@ void LP11::reset() {
 }
 
 void LP11::step() {
+#ifndef NOI2C
     if (!lpcheck) {
         return ;
     }
@@ -86,6 +108,8 @@ void LP11::step() {
     lp11_delay = 0 ;
 
     u16 lps = lp11_i2c_read(LP11_I2C_LPS) ;
+
+#endif
     if (lps & 0200) {
         lpcheck = false ;
 

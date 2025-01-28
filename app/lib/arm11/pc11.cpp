@@ -6,15 +6,16 @@
 #include <circle/i2cmaster.h>
 #include <cons/cons.h>
 
+extern volatile bool interrupted ;
+extern KB11 cpu;
+
+#ifndef NOI2C
 #define I2C_SLAVE 050
 const u8 PC11_I2C_PRS = 050 ;
 const u8 PC11_I2C_PRB = 052 ;
 const u8 PC11_I2C_PPS = 054 ;
 const u8 PC11_I2C_PPB = 056 ;
 const u8 PC11_I2C_RST = 060 ;
-
-extern volatile bool interrupted ;
-extern KB11 cpu;
 extern CI2CMaster *pI2cMaster ;
 
 int ptp_delay = 0 ;
@@ -39,17 +40,37 @@ static void pc11_i2c_write(const u8 addr, const u16 v) {
         gprintf("pc11_i2c_write: a=%03o, v=%06o, r=%d, ret=%03o", addr, r, result) ;
     }
 }
+#else
+    u16 prs, prb, pps, ppb ;
+#endif
 
 u16 PC11::read16(const u32 a) {
     switch (a) {
         case PC11_PRS:
+#ifndef NOI2C
             return pc11_i2c_read(PC11_I2C_PRS) ;
+#else
+            return prs | 0100000 ;
+#endif
         case PC11_PRB:
+#ifndef NOI2C
             return pc11_i2c_read(PC11_I2C_PRB) ;
+#else
+            return prb ;
+#endif
         case PC11_PPS:
+#ifndef NOI2C
             return pc11_i2c_read(PC11_I2C_PPS) ;
+#else
+            return pps | 0200 ;
+#endif
+
         case PC11_PPB:
+#ifndef NOI2C
             return pc11_i2c_read(PC11_I2C_PPB) ; ;
+#else
+            return ppb ;
+#endif
         default:
             break ;
     }
@@ -59,17 +80,25 @@ u16 PC11::read16(const u32 a) {
 void PC11::write16(const u32 a, const u16 v) {
     switch (a) {
         case PC11_PRS:
+#ifndef NOI2C
             pc11_i2c_write(PC11_I2C_PRS, v) ;
             if (v & 01) {
                 ptr_delay = 0 ;
                 ptrcheck = true ;
             }
+#else
+            prs = v | 0100200 ;
+#endif
             break;
         case PC11_PRB:
             break ; //read-only
         case PC11_PPS: {
+#ifndef NOI2C
                 pc11_i2c_write(PC11_I2C_PPS, v) ;
                 u16 pps = pc11_i2c_read(PC11_I2C_PPS) ;
+#else
+                pps = v | 0200 ;
+#endif
                 if ((pps & 0100) && (pps & 0100200)) {
                     cpu.interrupt(INTPTP, 5) ;
                 } else {
@@ -78,9 +107,13 @@ void PC11::write16(const u32 a, const u16 v) {
             }
             break ;
         case PC11_PPB:
+#ifndef NOI2C
             pc11_i2c_write(PC11_I2C_PPB, v) ;
             ptp_delay = 0 ;
             ptpcheck = true ;
+#else
+            ppb = v ;
+#endif
             break;
         default:
             gprintf("pc11::write16 invalid write to %06o\n", a);
@@ -92,7 +125,9 @@ void PC11::write16(const u32 a, const u16 v) {
 void PC11::reset() {
     ptrcheck = false ;
     ptpcheck = false ;
+#ifndef NOI2C
     pI2cMaster->Write(I2C_SLAVE, &PC11_I2C_RST, 1) ;
+#endif
 }
 
 void PC11::step() {
@@ -101,6 +136,7 @@ void PC11::step() {
 }
 
 void PC11::ptr_step() {
+#ifndef NOI2C
     if (!ptrcheck) {
         return ;
     }
@@ -112,6 +148,7 @@ void PC11::ptr_step() {
     ptr_delay = 0 ;
 
     u16 prs = pc11_i2c_read(PC11_I2C_PRS) ;
+#endif
     if (prs & 0200) {
         ptrcheck = false ;
         if (prs & 0100) {
@@ -123,6 +160,7 @@ void PC11::ptr_step() {
 }
 
 void PC11::ptp_step() {
+#ifndef NOI2C
     if (!ptpcheck) {
         return ;
     }
@@ -134,6 +172,7 @@ void PC11::ptp_step() {
     ptp_delay = 0 ;
 
     u16 pps = pc11_i2c_read(PC11_I2C_PPS) ;
+#endif
     if (pps & 0200) {
         ptpcheck = false ;
 

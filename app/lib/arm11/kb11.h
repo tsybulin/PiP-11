@@ -7,6 +7,8 @@
 #include "unibus.h"
 #include "xx11.h"
 
+//#define NOI2C 1
+
 #define PSW_BIT_C             001
 #define PSW_BIT_V             002
 #define PSW_BIT_Z             004
