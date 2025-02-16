@@ -32,6 +32,7 @@ boolean MultiCore::Initialize(char *kf, char *lf, bool bm) {
 }
 
 TShutdownMode startup(const char *rkfile, const char *rlfile, const bool bootmon) ;
+// void hw_step() ;
 
 void MultiCore::Run(unsigned ncore) {
     CLogger::Get()->Write("mcore", LogNotice, "Run %d", ncore) ;
@@ -73,6 +74,9 @@ void MultiCore::Run(unsigned ncore) {
 
     if (ncore == 3) {
         return ;
+        // while (!interrupted) {
+        //     hw_step() ;
+        // }
     }
 }
 

@@ -122,6 +122,39 @@ inline bool QINTERRUPT() {
     return false ;
 }
 
+inline void hw_step() {
+    if (cpu.cpuStatus != CPU_STATUS_HALT) {
+        cpu.unibus.rk11.step() ;
+        cpu.unibus.rl11.step() ;
+        cpu.unibus.tc11.step() ;
+        cpu.unibus.ptr_ptp.step() ;
+        cpu.unibus.lp11.step() ;
+        cpu.pirq() ;
+        
+        cpu.unibus.cons.xpoll() ;
+        cpu.unibus.dl11.xpoll() ;
+
+        if (kbdelay++ > 60) {
+            cpu.unibus.cons.rpoll() ;
+            cpu.unibus.dl11.rpoll() ;
+            kbdelay = 0;
+        }
+        
+        nowtime = CTimer::GetClockTicks64() ;
+        if (nowtime - systime > clkdiv) {
+            cpu.unibus.kw11.tick();
+            systime = nowtime;
+        }
+
+        if (nowtime - ptime > 10ul) { // 100 kHz
+            ptime = nowtime ;
+            cpu.unibus.kw11.ptick() ;
+        }
+
+        cpu.unibus.toy.step() ;
+    }
+}
+
 void loop() {
     auto vec = setjmp(trapbuf);
 
@@ -152,34 +185,9 @@ void loop() {
                 // ;
             }
         }
-        
-        cpu.unibus.rk11.step() ;
-        cpu.unibus.rl11.step() ;
-        cpu.unibus.tc11.step() ;
-        cpu.unibus.ptr_ptp.step() ;
-        cpu.unibus.lp11.step() ;
-        cpu.pirq() ;
-        
-        cpu.unibus.cons.xpoll() ;
-        cpu.unibus.dl11.xpoll() ;
 
-        if (kbdelay++ > 60) {
-            cpu.unibus.cons.rpoll() ;
-            cpu.unibus.dl11.rpoll() ;
-            kbdelay = 0;
-        }
+        hw_step() ;
         
-        nowtime = CTimer::GetClockTicks64() ;
-        if (nowtime - systime > clkdiv) {
-            cpu.unibus.kw11.tick();
-            systime = nowtime;
-        }
-
-        if (nowtime - ptime > 10ul) { // 100 kHz
-            ptime = nowtime ;
-            cpu.unibus.kw11.ptick() ;
-        }
-
         if (QINTERRUPT()) {
             return ; // exit from loop to reset trapbuf
         }

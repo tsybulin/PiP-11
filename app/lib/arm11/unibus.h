@@ -9,6 +9,7 @@
 #include "tc11.h"
 #include "vt11.h"
 #include "xx11.h"
+#include "toy.h"
 
 const u32 MEMSIZE = //004000000 ; // 1024K
                   017000000 ; // 3840K
@@ -35,6 +36,7 @@ class UNIBUS : public XX11 {
         DL11 dl11;
         TC11 tc11 ;
         VT11 vt11 ;
+        TOY  toy ;
         u16 *core ;
     private:
         void PUT_TBL(const u32 a, const PXX11 v) ;

@@ -197,6 +197,7 @@ class KT11 : public XX11 {
 
             u8 nr = (a & 0760000) >> 12 ;
 
+            // The 124K of addresses from 17 000 000 - 17 757 777 may be used to access memory via the Unibus Map
             u32 aa = (a & 017776) + ((((u32)UBMR[nr | 1] & 077) << 16) | ((u32)UBMR[nr] & 0177776)) ;
 
             // if (is_debug()) {

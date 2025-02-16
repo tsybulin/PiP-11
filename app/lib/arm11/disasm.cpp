@@ -16,7 +16,7 @@ struct D {
     bool b;
 };
 
-enum { DD = 1 << 1, S = 1 << 2, RR = 1 << 3, O = 1 << 4, N = 1 << 5 };
+enum { DD = 1 << 1, S = 1 << 2, RR = 1 << 3, O = 1 << 4, N = 1 << 5, A = 1 << 6 };
 
 extern KB11 cpu;
 
@@ -31,11 +31,18 @@ constexpr D disamtable[] = {
 
     {0177700, 0000100, "JMP", DD, false},
     {0177770, 0000200, "RTS", RR, false},
+    {0177770, 0000230, "SPL", A, false},
+    {0177770, 0000240, "CCC", A, false},
+    {0177770, 0000250, "CCC", A, false},
+    {0177770, 0000260, "SCC", A, false},
+    {0177770, 0000270, "SCC", A, false},
     {0177700, 0000300, "SWAB", DD, false},
 
     {0177700, 0006400, "MARK", N, false},
     {0177700, 0006500, "MFPI", DD, false},
     {0177700, 0006600, "MTPI", DD, false},
+    {0177700, 0106500, "MFPD", DD, false},
+    {0177700, 0106600, "MTPD", DD, false},
     {0177700, 0006700, "SXT", DD, false},
 
     {0177400, 0104000, "EMT", N, false},
@@ -100,10 +107,10 @@ void disasmaddr(u16 m, u16 a) {
                 return;
             case 067:
                 a += 2;
-                Console::get()->printf("%06o", (a + 2 + (cpu.readW(a))) & 0xFFFF);
+                Console::get()->printf("%06o", (a + 2 + (cpu.readW(a))) & 0177777);
                 return;
             case 077:
-                Console::get()->printf("@%06o", (a + 2 + (cpu.readW(a))) & 0xFFFF);
+                Console::get()->printf("@%06o", (a + 2 + (cpu.readW(a))) & 0177777);
                 return;
         }
     }
@@ -163,6 +170,9 @@ void disasm(u16 a) {
     auto o = ins & 0377;
 
     switch (l.flag) {
+        case A:
+            Console::get()->printf(" %o", ins & 7);
+            break ;
         case S | DD:
             Console::get()->printf(" ");
             disasmaddr(ss, a);

@@ -118,6 +118,11 @@ void UNIBUS::init() {
     for (u32 a = 017777600; a < 017777700; a += 2) {
         PUT_TBL(a, &cpu.mmu) ;
     }
+
+    PUT_TBL(TOY_CSR, &toy) ;
+    PUT_TBL(TOY_DAR, &toy) ;
+    PUT_TBL(TOY_TLR, &toy) ;
+    PUT_TBL(TOY_THR, &toy) ;
 }
 
 void UNIBUS::ub_write16(const u32 a, const u16 v) {
@@ -198,4 +203,5 @@ void UNIBUS::reset(bool i2c) {
         ptr_ptp.reset() ;
         lp11.reset();
     }
+    toy.reset() ;
 }
