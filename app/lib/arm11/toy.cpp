@@ -65,7 +65,7 @@ bool TOY::ds3231_set_time() {
     }
 
     obf[0] = 0x02 ;
-	obf[1] =  0100 | ((hours % 10) & 017) | (((hours / 10) & 3) << 4) ;
+	obf[1] = ((hours % 10) & 017) | (((hours / 10) & 3) << 4) ;
     r = pI2cMaster->Write(I2C_SLAVE, &obf, 2) ;
     if (r != 2) {
         CLogger::Get()->Write("TOY", LogError, "ds3231_set_time hours err r = %d", r) ;
